@@ -1,3 +1,13 @@
+> **Status: parked proof of concept. Do not use this for delivery.**
+>
+> A production runtime for non-Copilot callers already exists in
+> [hve-squad-mcp](https://github.com/Peter-N91/hve-squad-mcp), which carries Entra authentication,
+> tenant isolation, non-bypassable human gates, encryption at rest, and cost caps that this package
+> does not. Use that. This repository is retained only as a demonstration that squad markdown
+> charters can drive an Agent Framework runtime unchanged, and for the artifact-layout findings
+> below. See ADR-0003 in the hve-squad repository for the reasoning and for the conditions under
+> which this work would be reopened.
+
 # hve-squad-maf
 
 Runs [hve-squad](https://github.com/Peter-N91/hve-squad) on
@@ -6,14 +16,29 @@ Runs [hve-squad](https://github.com/Peter-N91/hve-squad) on
 hve-squad has no runtime of its own. It is a package of declarative markdown — agent charters with
 YAML frontmatter, a roster table, routing and state instructions, and skills — executed by the
 GitHub Copilot agent loop in VS Code. This repository gives those same artifacts a second runtime
-host, so a squad can also run under MAF and be reached from DevUI, A2A, MCP clients, or Microsoft
-Foundry.
+host.
 
 The markdown stays authoritative. Nothing here duplicates an agent definition; the loader reads the
 artifacts the Copilot host already reads.
 
-> Status: proof of concept. The loader and graph assembly are verified against the real artifact
-> tree. Running a squad end-to-end against a live model has not been validated.
+## Why this is parked
+
+| Capability            | hve-squad-mcp           | this package                    |
+|-----------------------|-------------------------|---------------------------------|
+| Entra authentication  | present                 | absent                          |
+| Tenant isolation      | present                 | absent                          |
+| Human gates           | present, non-bypassable | absent                          |
+| Encryption at rest    | present                 | absent                          |
+| Cost caps             | present                 | absent                          |
+| Advisory pipeline     | deployed                | staged workflow only            |
+| Tool calling          | absent                  | available in MAF, not wired here |
+| Step-level checkpoint | absent                  | available in MAF, not wired here |
+| `SKILL.md` loading    | absent                  | implemented here                |
+| Context compaction    | minimal                 | available in MAF, not wired here |
+
+The last four rows are the only place Agent Framework would earn its keep, and they correspond to
+the execution expansion the MCP server has deferred. If that expansion happens, an Agent Framework
+execution tier would sit *behind* the MCP edge rather than beside it.
 
 ## Design
 
