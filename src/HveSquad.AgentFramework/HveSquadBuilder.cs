@@ -1,5 +1,6 @@
 using HveSquad.AgentFramework.Agents;
 using HveSquad.AgentFramework.Artifacts;
+using HveSquad.AgentFramework.Sources;
 using HveSquad.AgentFramework.Workflows;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Workflows;
@@ -14,6 +15,9 @@ public sealed class Squad
     public required SquadArtifacts Artifacts { get; init; }
 
     public required IReadOnlyDictionary<string, AIAgent> Agents { get; init; }
+
+    /// <summary>Where the artifacts came from, for diagnostics and provenance.</summary>
+    public required string Origin { get; init; }
 
     /// <summary>The staged workflow, or null when fewer than two stages were configured.</summary>
     public Workflow? Workflow { get; init; }
@@ -31,20 +35,38 @@ public sealed class HveSquadBuilder
 {
     private readonly List<StageSelector> _stages = [];
     private readonly SquadAgentFactoryOptions _factoryOptions = new();
-    private string? _artifactRoot;
-    private string? _rosterPath;
+    private SquadArtifactSource? _source;
     private IChatClient? _chatClient;
 
     private readonly record struct StageSelector(string Value, bool IsRole);
 
     /// <param name="artifactRoot">A <c>.github</c> or <c>squad-src/.github</c> directory.</param>
     /// <param name="rosterPath">Optional path to <c>team.md</c>.</param>
-    public HveSquadBuilder FromArtifacts(string artifactRoot, string? rosterPath = null)
+    public HveSquadBuilder FromArtifacts(string artifactRoot, string? rosterPath = null) =>
+        FromSource(new DirectoryArtifactSource([artifactRoot], rosterPath));
+
+    /// <summary>
+    /// Resolves artifacts through a source. Use <see cref="FromInstalledProject"/> for the common
+    /// case where the consumer has already installed the package.
+    /// </summary>
+    public HveSquadBuilder FromSource(SquadArtifactSource source)
     {
-        _artifactRoot = artifactRoot;
-        _rosterPath = rosterPath;
+        ArgumentNullException.ThrowIfNull(source);
+
+        _source = source;
         return this;
     }
+
+    /// <summary>
+    /// Walks up from <paramref name="startDirectory"/> to find a project with a deployed
+    /// <c>.github/agents</c> folder. Offline and configuration-free.
+    /// </summary>
+    public HveSquadBuilder FromInstalledProject(string? startDirectory = null) =>
+        FromSource(new ProjectArtifactSource(startDirectory));
+
+    /// <summary>Installs a pinned package through the APM CLI into a cache directory.</summary>
+    public HveSquadBuilder FromPackage(string packageSpec, string target = "copilot") =>
+        FromSource(new ApmArtifactSource(packageSpec, target));
 
     public HveSquadBuilder WithChatClient(IChatClient chatClient)
     {
@@ -91,19 +113,21 @@ public sealed class HveSquadBuilder
         return this;
     }
 
-    public Squad Build()
+    public async Task<Squad> BuildAsync(CancellationToken cancellationToken = default)
     {
-        if (_artifactRoot is null)
+        if (_source is null)
         {
-            throw new InvalidOperationException($"Call {nameof(FromArtifacts)} before {nameof(Build)}.");
+            throw new InvalidOperationException(
+                $"Call {nameof(FromInstalledProject)}, {nameof(FromArtifacts)}, or {nameof(FromSource)} first.");
         }
 
         if (_chatClient is null)
         {
-            throw new InvalidOperationException($"Call {nameof(WithChatClient)} before {nameof(Build)}.");
+            throw new InvalidOperationException($"Call {nameof(WithChatClient)} before building.");
         }
 
-        var artifacts = SquadArtifactLoader.Load(_artifactRoot, _rosterPath);
+        var resolved = await _source.ResolveAsync(cancellationToken).ConfigureAwait(false);
+        var artifacts = SquadArtifactLoader.Load(resolved.Roots, resolved.RosterPath);
         var factory = new SquadAgentFactory(_chatClient, _factoryOptions);
 
         var stageNames = _stages.Select(s => Resolve(artifacts, s)).ToList();
@@ -116,6 +140,7 @@ public sealed class HveSquadBuilder
         {
             Artifacts = artifacts,
             Agents = factory.CreateAll(artifacts),
+            Origin = resolved.Origin,
             Workflow = workflow,
         };
     }

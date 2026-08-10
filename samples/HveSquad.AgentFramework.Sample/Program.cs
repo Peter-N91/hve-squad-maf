@@ -1,17 +1,28 @@
-using HveSquad.AgentFramework;
 using HveSquad.AgentFramework.Agents;
 using HveSquad.AgentFramework.Artifacts;
 using HveSquad.AgentFramework.Sample;
+using HveSquad.AgentFramework.Sources;
 using HveSquad.AgentFramework.Workflows;
 
-if (args.Length == 0)
+// With no arguments, discover an installed project by walking up from the working directory.
+SquadArtifactSource source = args.Length == 0
+    ? new ProjectArtifactSource()
+    : new DirectoryArtifactSource(args);
+
+SquadArtifactRoots resolved;
+try
 {
-    Console.Error.WriteLine("usage: inspect <artifactRoot> [additionalRoots...]");
-    Console.Error.WriteLine(@"  example: inspect C:\Solutions\hve-squad\.github");
+    resolved = await source.ResolveAsync();
+}
+catch (SquadArtifactsNotFoundException ex)
+{
+    Console.Error.WriteLine(ex.Message);
     return 1;
 }
 
-var artifacts = SquadArtifactLoader.Load(args);
+Console.WriteLine($"Origin:    {resolved.Origin}");
+
+var artifacts = SquadArtifactLoader.Load(resolved.Roots, resolved.RosterPath);
 
 Console.WriteLine($"Charters:  {artifacts.Charters.Count}");
 Console.WriteLine($"Skills:    {artifacts.SkillDirectories.Count}");
@@ -32,7 +43,7 @@ foreach (var edge in unresolved)
 if (unresolved.Count > 0)
 {
     Console.WriteLine();
-    Console.WriteLine($"{unresolved.Count} delegation edge(s) do not resolve. Check that every dependency root was passed.");
+    Console.WriteLine($"{unresolved.Count} delegation edge(s) do not resolve; the artifact tree is incomplete.");
 }
 
 var stages = new[] { "Squad Researcher", "Squad Lead", "Squad Reviewer" };
