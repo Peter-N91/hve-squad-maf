@@ -2,13 +2,26 @@
 
 <img src="docs/assets/logo.svg" width="80" height="80" alt="HVE Squad MAF: connected framework nodes around a coordinator">
 
-Native .NET integration for [HVE Squad](https://github.com/Peter-N91/hve-squad),
-built on Microsoft Agent Framework. This is an **unpublished preview**, not the
-previously parked artifact-inspection proof of concept.
+Embed [HVE Squad](https://github.com/Peter-N91/hve-squad) in your own .NET AI
+application so end users can do evidence-backed business work: prepare an RFP
+response, compare customer solution options, or draft a reviewed knowledge article.
+Built on native Microsoft Agent Framework, this is a library intended for NuGet
+consumption, not a Copilot development plugin or an application-building assistant.
+Version **0.1.0-preview.1 is unpublished**; use source or a local feed today.
 
-It runs real MAF agents using released HVE Squad charters, skills and instructions.
-It does not call the HVE Squad MCP service, fork Agent Framework, or ship copies of
-upstream charters in its NuGet package.
+It runs real MAF agents using released HVE charters, skills, and instructions.
+The supported app-facing subset is advisory document work with research, planning,
+one producing owner, human gates, and review. Existing `technical-writer`, `analyst`,
+and `product-owner` specialists are not newly shipped sales, insurance, finance, or
+support expert personas. Approved domain evidence grounds them; it does not
+automatically confer domain expertise.
+
+Start with the [RFP response workbench](docs/use-cases.html#rfp), including a
+[complete `BidDraftService.DraftAsync` method](docs/use-cases.html#rfp-code).
+For publication rather than local consumption, see the
+[maintainer publishing procedure](docs/maintaining.html#publishing).
+The library does not call the HVE Squad MCP service, fork Agent Framework, or
+redistribute upstream charters in its package.
 
 ## Documentation site
 
@@ -20,10 +33,11 @@ The static GitHub Pages site is ready in `docs/`:
 
 **No separate squad server is required.** This is a .NET library distributed as a
 NuGet package, not a Copilot plugin. It executes inside the consumer's MAF application.
-That application supplies its model client, project storage, human approval UI and
-any external tools. GitHub Pages hosts documentation only, never the agent runtime.
-Optional service hosting and future NuGet publishing are explained in the
-[maintainer guide](docs/maintaining.html), not presented as shipped infrastructure.
+That application supplies its model client, authentication, document ingestion and
+rights checks, isolated case storage, human approval UI, job lifecycle, and any
+retrieval or external tools. GitHub Pages hosts documentation only, never the agent
+runtime. Optional service hosting and future NuGet publication are explained in the
+[maintainer guide](docs/maintaining.html#publishing), not presented as shipped infrastructure.
 
 To publish the site after reviewing and pushing these changes, set the repository's
 **Settings > Pages > Source** to **GitHub Actions** and run **Deploy documentation**
@@ -37,7 +51,7 @@ files alone does not make the site live.
 | Simple setup | `SquadRuntime.CreateAsync`, or `AddHveSquad` with configuration and the application's existing `IChatClient` |
 | Release alignment | Defaults to GitHub's latest published stable release, resolved to an exact commit before installation |
 | Roles and profiles | Reads the release's cast, profiles, packs and selection cues; rejects missing, disabled or off-roster agents |
-| Delivery | Research, plan with phase details, conditional intake/council, one producing role, then review |
+| Advisory delivery | Research, plan with phase details, conditional intake/council, one producing role, then review; native Markdown output and evidence |
 | Focused requests | Research-only, plan-only and review-only runs have distinct completion statuses |
 | Skills | Native `AgentSkillsProvider` loads canonical skill names and referenced resources, including APM-renamed directories |
 | Human interaction | Host callbacks confirm initialization, routing, plan/implementation and consequential tool calls; unanswered questions stop work |
@@ -53,6 +67,15 @@ remote approval transports and skill-script execution are not implemented. Unsup
 modes fail explicitly rather than silently skipping their contracts. The library
 provides no unrestricted shell, deployment, tracker, web-search or model credentials.
 Those capabilities need explicit host integration.
+
+For an RFP job, the result is a cited Markdown draft with gaps and review evidence,
+not a Word/PDF export, a pricing engine, compliance proof, or a submitted bid.
+`Completed` does not authorize commercial, legal, or security commitments.
+Delivery/plan requests with `InputPaths` require intake; the released intake seat
+is the PRD Quality Reviewer, not a generic business-document validator. Evaluate
+that fit and surface blockers rather than assuming arbitrary RFPs will pass.
+Commodity ticket routing and simple summaries may need only plain MAF; long-running
+autonomous business agents are not a fit for this preview.
 
 The native Scribe is a deterministic persistence service, not a model agent. It owns
 the state directory and writes evidence only for actual specialist dispatches. Its
@@ -79,11 +102,15 @@ implementation sequence. No MCP service is inherently required to add it.
 - Git and [APM CLI](https://github.com/microsoft/apm) on PATH. APM 0.18.0 is used in compatibility CI.
 - Network access to GitHub and APM dependencies when resolving a release. The
   default path acquires the complete matched dependency tree, not just a source clone.
+- A dedicated writable case directory for approved text inputs, native state, and
+  outputs. An individual business case needs no Git repository or source checkout;
+  Git/APM are used for artifact acquisition.
 - For model execution, an application-provided `Microsoft.Extensions.AI.IChatClient`.
   The sample uses the official OpenAI .NET adapter.
 
-The package is not published to NuGet by this change. Use a project reference, or
-build a local package:
+The package is not published to NuGet. Use a project reference, or build a local
+package; the [getting-started guide](docs/getting-started.html#package) covers local
+consumption and labels the future public-feed command separately:
 
 ```powershell
 dotnet build HveSquad.AgentFramework.slnx
@@ -92,56 +119,54 @@ dotnet pack src\HveSquad.AgentFramework --configuration Release --output artifac
 
 ## Use in an existing MAF application
 
-The host retains ownership of its model client. A runtime is scoped to one project,
-serializes its own turns, and must be disposed by its caller.
+The worked example puts a **Draft response for bid review** button in a .NET sales
+portal. The host authorizes the case and normalizes an RFP plus approved capability
+evidence into known text inputs, then calls the library inside an application job:
 
-```csharp
-using System.Text.Json;
-using HveSquad.AgentFramework.Runtime;
-
-// chatClient is the IChatClient already configured by your application.
-var options = new SquadRuntimeOptions
-{
-    ProjectPath = @"C:\projects\my-app",
-    Profile = "default",
-    Version = "latest", // Or a published stable tag such as "v0.16.2".
-    ApproveAsync = async (proposal, cancellationToken) =>
-    {
-        Console.WriteLine(JsonSerializer.Serialize(proposal));
-        Console.Write("Approve this exact proposal? Type yes: ");
-        return string.Equals(
-            await Console.In.ReadLineAsync(cancellationToken),
-            "yes",
-            StringComparison.OrdinalIgnoreCase);
-    },
-    AskAsync = async (question, cancellationToken) =>
-    {
-        Console.WriteLine(question.Question);
-        return await Console.In.ReadLineAsync(cancellationToken);
-    },
-};
-
-using var squad = await SquadRuntime.CreateAsync(chatClient, options);
-Console.WriteLine(squad.Provenance.Release);
-var result = await squad.RunAsync("Research this project's error-handling approach.");
-Console.WriteLine($"{result.Status}: {result.ResponseText}");
+```text
+Sales user + approved inputs
+    -> authorized .NET case job
+    -> SquadRuntime: intake / research / approved outline / draft / review
+    -> run status + draft evidence
+    -> portal UI for bid-manager review (no external send)
 ```
 
-Before creating any squad state, the host must confirm the complete initialization
-proposal: single-squad scope, profile/packs, roster, member naming and approval channel.
-No approval callback means `ApprovalRequired`, not implicit approval. Use your
-application's UI for these callbacks in a web or desktop host.
+The [complete class and result record](docs/use-cases.html#rfp-code) accept a
+server-selected absolute `caseDirectory`, an existing `IChatClient`, human approval
+and question callbacks, and cancellation. It pins `v0.16.2`, selects `full` for
+`technical-writer` and the intake seats, supplies two known `InputPaths`, and
+registers no custom tools. Native case reads and scoped Markdown/state writes
+remain available. `InputPaths` is not a read allowlist; isolate the available data
+in the case directory.
+
+`BidDraftResult` retains the `SquadRunResult` and returns a draft-relative path only
+on `Completed`, selected from the producing owner's exact evidence—not the latest
+file or a user-supplied path. The caller maps other outcomes and exceptions to its
+job UI and revalidates canonical path containment and user access before serving
+output. The runtime does not ingest cloud Office documents or send results itself.
+
+`ProjectPath` means this case work directory, not necessarily a development project.
+The fixed `.copilot-tracking/squad` state root requires separate directories for
+unrelated cases. The application queue enforces one active run per case. Dispose
+each runtime after use; the host retains ownership of its model client.
+
+Human callbacks confirm the full initialization proposal, routing, and later gates.
+No approval callback means `ApprovalRequired`, not implicit approval. In a web or
+desktop host, await an authenticated answer through the application's UI within
+`RunTimeout`; the runtime does not provide durable approval suspension or automatic
+job resume.
 
 ### Configuration and dependency injection
 
 ```json
 {
   "HveSquad": {
-    "ProjectPath": "C:\\projects\\my-app",
-    "Profile": "default",
-    "Version": "latest",
+    "ProjectPath": "C:\\app-data\\bid-cases\\demo",
+    "Profile": "full",
+    "Version": "v0.16.2",
     "Mode": "interactive",
     "Packs": [],
+    "InputPaths": ["inputs\\rfp.txt", "inputs\\approved-capabilities.txt"],
     "MaxDispatches": 32,
     "MaxModelCalls": 64
   }
@@ -168,17 +193,22 @@ using var squad = await factory.CreateAsync(cancellationToken);
 var result = await squad.RunAsync(request, cancellationToken);
 ```
 
-`ApproveInYourApplicationAsync` and `AskInYourApplicationAsync` are your application's
-callbacks, with the signatures shown in the direct example. Registration is lazy:
+This configuration describes one provisioned demo case, not one directory shared
+by every application user. `ApproveInYourApplicationAsync` and
+`AskInYourApplicationAsync` are the application's callbacks, with the signatures in
+the [complete job method](docs/use-cases.html#rfp-code). Registration is lazy:
 network access and artifact acquisition occur in `CreateAsync`, not in a DI constructor.
 Each factory call creates an independently owned runtime. Configuration binds only
 known data settings; delegates, model selectors, tools and logging are host-only.
 
 ### Supplying real capabilities
 
-Agents can read project files and write scoped methodology artifacts. A report alone
-does not prove that source code, infrastructure or an external system changed.
-Implementation requires a trusted host function, for example:
+Advisory Markdown drafts need no source editor, CRM writer, or external sender.
+Agents can read contained case files and write scoped methodology artifacts using
+native tools. Your host owns ingestion, approved retrieval, and delivery.
+If another application feature genuinely needs to change source or an external
+system, it requires a trusted host function; a report is not evidence of that effect.
+For example, an optional source-editing integration can register:
 
 ```csharp
 options.Tools.Add(new SquadToolRegistration(
@@ -196,7 +226,7 @@ Failed or dry-run operations must not attest an applied effect. For a host-speci
 producing role, `RequireOutputForCompletion: true` can require the configured effect.
 
 The sample's `ProjectFileWriter` demonstrates a contained source writer and output
-attestation. Every consequential call requires a separate host approval containing
+attestation, not a capability needed by the RFP example. Every consequential call requires a separate host approval containing
 the actual arguments. Hosts are responsible for honest effect classification,
 resource isolation and not mutating the runtime's shared state through custom tools.
 
@@ -264,15 +294,20 @@ stored in the repository.
 
 ```powershell
 dotnet run --project samples\HveSquad.AgentFramework.Sample -- `
-  --run "Research and plan a small improvement to error handling" `
-  --project C:\projects\my-app --version latest --profile default
+  --run "Research the question in inputs\rfp.txt using inputs\approved-capabilities.txt. Cite source identifiers and report gaps. Stop after research; do not change inputs or send anything externally." `
+  --project C:\app-data\bid-cases\demo --version v0.16.2 --profile full
 ```
+
+First provision the [fictional approved text inputs](docs/getting-started.html#sample);
+an empty directory cannot supply product evidence. This focused request produces
+research evidence, not a completed response draft.
 
 Alternatively, `--config <run.json>` accepts `request`, `project`, `version` and
 `profile`. The console waits for explicit `yes` on approvals and supports Ctrl+C.
-It exposes only a contained `write_project_file` source tool, not shell/build/test
-execution or external research. Add those functions in your own host when required;
-the sample does not imply that unavailable operations ran.
+In addition to native case reads and methodology artifacts, it exposes a contained
+`write_project_file` source tool for the developer role. That is an optional sample
+capability, not the library's business proposition. It has no shell/build/test
+executor or external research connector and does not imply unavailable operations ran.
 
 ## Development and compatibility checks
 
