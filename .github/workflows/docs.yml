@@ -1,0 +1,81 @@
+name: Deploy documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/**
+      - .github/workflows/docs.yml
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Package public documentation
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Stage only public static assets
+        shell: python
+        run: |
+          from pathlib import Path
+          import shutil
+
+          root = Path("docs")
+          destination = Path("public-site")
+          asset_types = {".css", ".js", ".svg", ".png", ".jpg", ".jpeg", ".webp", ".ico"}
+          if not root.is_dir() or root.is_symlink():
+              raise SystemExit("Expected a regular docs directory.")
+          for source in sorted(root.rglob("*")):
+              relative = source.relative_to(root)
+              if source.is_symlink():
+                  raise SystemExit(f"Symlinks must not be published: {relative}")
+              if any(part.startswith(".") for part in relative.parts):
+                  continue
+              public_page = len(relative.parts) == 1 and source.suffix.lower() == ".html"
+              public_asset = relative.parts[0] == "assets" and source.suffix.lower() in asset_types
+              if source.is_file() and (public_page or public_asset):
+                  target = destination / relative
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  shutil.copyfile(source, target)
+          if not (destination / "index.html").is_file():
+              raise SystemExit("Public docs/index.html is missing.")
+          (destination / ".nojekyll").touch()
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: public-site
+          retention-days: 1
+
+  deploy:
+    name: Deploy GitHub Pages
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure Pages (must already be enabled in Settings)
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+        with:
+          enablement: false
+      - name: Deploy Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

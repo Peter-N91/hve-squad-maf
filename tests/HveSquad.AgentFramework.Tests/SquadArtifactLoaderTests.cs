@@ -36,6 +36,31 @@ public class SquadArtifactLoaderTests
     }
 
     [Fact]
+    public void LoadCharter_KeepsInvocationFlagsIndependentAndReadsTools()
+    {
+        using var tree = new TemporaryArtifactTree();
+        var path = tree.Write(
+            "entry.agent.md",
+            """
+            ---
+            name: Entry
+            user-invocable: true
+            disable-model-invocation: true
+            tools:
+              - read
+              - execute
+            ---
+            Body
+            """);
+
+        var charter = SquadArtifactLoader.LoadCharter(path);
+
+        Assert.True(charter.UserInvocable);
+        Assert.True(charter.DisableModelInvocation);
+        Assert.Equal(["read", "execute"], charter.Tools);
+    }
+
+    [Fact]
     public void LoadRoster_ParsesMembersTableOnly()
     {
         var roster = SquadArtifactLoader.LoadRoster(Path.Combine(FixtureDir, "team.md"));
@@ -61,6 +86,32 @@ public class SquadArtifactLoaderTests
         Assert.Null(developer.MemberName);
         Assert.Empty(developer.AlternateAgents);
         Assert.Equal("developer", developer.Key);
+    }
+
+    [Fact]
+    public void LoadRoster_PreservesOwnerAndSelectionCue()
+    {
+        using var tree = new TemporaryArtifactTree();
+        var path = tree.Write(
+            "team.md",
+            """
+            ## Members
+
+            | Role | Member Name | Agent Name (Primary) | Alternate Agents | Selection Cue |
+            |------|-------------|----------------------|------------------|---------------|
+            | tester | Delta | Reviewer | Security Reviewer | security diff → Security Reviewer |
+            | scribe |  | Scribe | — | — |
+            """);
+
+        var roster = SquadArtifactLoader.LoadRoster(path);
+
+        var tester = roster.Resolve("tester", "Delta");
+        Assert.NotNull(tester);
+        Assert.Equal("security diff → Security Reviewer", tester.SelectionCue);
+        var scribe = roster.FindByRole("scribe");
+        Assert.NotNull(scribe);
+        Assert.Empty(scribe.AlternateAgents);
+        Assert.Null(scribe.SelectionCue);
     }
 
     [Fact]
@@ -113,5 +164,88 @@ public class SquadArtifactLoaderTests
 
         Assert.Single(unresolved);
         Assert.Contains("Ghost", unresolved[0], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Load_DiscoversInstructionsInFlatAndNestedLayoutsWithRootPrecedence()
+    {
+        using var source = new TemporaryArtifactTree();
+        using var deployed = new TemporaryArtifactTree();
+        source.Write(
+            Path.Combine("instructions", "squad", "squad-roster.instructions.md"),
+            Instruction("source", "source body"));
+        source.Write(
+            Path.Combine("instructions", "squad-state.instructions.md"),
+            Instruction("state", "state body"));
+        deployed.Write(
+            Path.Combine("instructions", "squad-roster.instructions.md"),
+            Instruction("deployed", "deployed body"));
+
+        var artifacts = SquadArtifactLoader.Load([source.Root, deployed.Root]);
+
+        Assert.Equal(2, artifacts.Instructions.Count);
+        var roster = Assert.Single(
+            artifacts.Instructions,
+            i => i.FileName == "squad-roster.instructions.md");
+        Assert.Equal("source", roster.Description);
+        Assert.Equal("source body", roster.Body);
+    }
+
+    [Fact]
+    public void Load_DiscoversSkillByMetadataWhenFolderIsRenamed()
+    {
+        using var tree = new TemporaryArtifactTree();
+        tree.Write(
+            Path.Combine("skills", "renamed-by-apm", "SKILL.md"),
+            """
+            ---
+            name: squad
+            description: released squad skill
+            ---
+            # Squad
+            """);
+
+        var artifacts = SquadArtifactLoader.Load(tree.Root);
+
+        var skill = Assert.Single(artifacts.Skills);
+        Assert.Equal("squad", skill.Name);
+        Assert.EndsWith(
+            Path.Combine("skills", "renamed-by-apm"),
+            skill.DirectoryPath,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string Instruction(string description, string body) =>
+        $"---{Environment.NewLine}description: {description}{Environment.NewLine}" +
+        $"applyTo: '**'{Environment.NewLine}---{Environment.NewLine}{body}";
+
+    private sealed class TemporaryArtifactTree : IDisposable
+    {
+        public TemporaryArtifactTree()
+        {
+            Root = Path.Combine(
+                AppContext.BaseDirectory,
+                "generated-artifacts",
+                Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(Root);
+        }
+
+        public string Root { get; }
+
+        public string Write(string relativePath, string contents)
+        {
+            var path = Path.Combine(Root, relativePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, contents);
+            return path;
+        }
+
+        public void Dispose()
+        {
+            if (Directory.Exists(Root))
+            {
+                Directory.Delete(Root, recursive: true);
+            }
+        }
     }
 }

@@ -4,7 +4,16 @@ namespace HveSquad.AgentFramework.Sources;
 /// <param name="Roots">Directories to search, in precedence order.</param>
 /// <param name="RosterPath">Path to <c>team.md</c>, or null when the squad has not run yet.</param>
 /// <param name="Origin">Human-readable description of where these roots came from, for diagnostics.</param>
-public sealed record SquadArtifactRoots(IReadOnlyList<string> Roots, string? RosterPath, string Origin);
+public sealed record SquadArtifactRoots(IReadOnlyList<string> Roots, string? RosterPath, string Origin)
+{
+    /// <summary>Release provenance when the artifacts were acquired from a published squad release.</summary>
+    public SquadRelease? Release { get; init; }
+}
+
+/// <summary>Immutable provenance for a published squad release.</summary>
+/// <param name="Tag">The stable semantic-version release tag.</param>
+/// <param name="CommitSha">The exact commit installed for the release.</param>
+public sealed record SquadRelease(string Tag, string CommitSha);
 
 /// <summary>
 /// Supplies the artifact directories the loader reads.

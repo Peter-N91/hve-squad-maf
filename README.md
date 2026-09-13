@@ -1,232 +1,324 @@
-> **Status: parked proof of concept. Do not use this for delivery.**
->
-> A production runtime for non-Copilot callers already exists in
-> [hve-squad-mcp](https://github.com/Peter-N91/hve-squad-mcp), which carries Entra authentication,
-> tenant isolation, non-bypassable human gates, encryption at rest, and cost caps that this package
-> does not. Use that. This repository is retained only as a demonstration that squad markdown
-> charters can drive an Agent Framework runtime unchanged, and for the artifact-layout findings
-> below. See ADR-0003 in the hve-squad repository for the reasoning and for the conditions under
-> which this work would be reopened.
+# HVE Squad for Microsoft Agent Framework
 
-# hve-squad-maf
+<img src="docs/assets/logo.svg" width="80" height="80" alt="HVE Squad MAF: connected framework nodes around a coordinator">
 
-Runs [hve-squad](https://github.com/Peter-N91/hve-squad) on
-[Microsoft Agent Framework](https://github.com/microsoft/agent-framework).
+Native .NET integration for [HVE Squad](https://github.com/Peter-N91/hve-squad),
+built on Microsoft Agent Framework. This is an **unpublished preview**, not the
+previously parked artifact-inspection proof of concept.
 
-hve-squad has no runtime of its own. It is a package of declarative markdown — agent charters with
-YAML frontmatter, a roster table, routing and state instructions, and skills — executed by the
-GitHub Copilot agent loop in VS Code. This repository gives those same artifacts a second runtime
-host.
+It runs real MAF agents using released HVE Squad charters, skills and instructions.
+It does not call the HVE Squad MCP service, fork Agent Framework, or ship copies of
+upstream charters in its NuGet package.
 
-The markdown stays authoritative. Nothing here duplicates an agent definition; the loader reads the
-artifacts the Copilot host already reads.
+## Documentation site
 
-## Why this is parked
+The static GitHub Pages site is ready in `docs/`:
+[overview](docs/index.html), [getting started](docs/getting-started.html),
+[runtime reference](docs/usage.html), [hosting](docs/hosting.html),
+[use cases](docs/use-cases.html), [federation](docs/federation.html), and
+[contributing and maintaining](docs/maintaining.html).
 
-| Capability            | hve-squad-mcp           | this package                    |
-|-----------------------|-------------------------|---------------------------------|
-| Entra authentication  | present                 | absent                          |
-| Tenant isolation      | present                 | absent                          |
-| Human gates           | present, non-bypassable | absent                          |
-| Encryption at rest    | present                 | absent                          |
-| Cost caps             | present                 | absent                          |
-| Advisory pipeline     | deployed                | staged workflow only            |
-| Tool calling          | absent                  | available in MAF, not wired here |
-| Step-level checkpoint | absent                  | available in MAF, not wired here |
-| `SKILL.md` loading    | absent                  | implemented here                |
-| Context compaction    | minimal                 | available in MAF, not wired here |
+**No separate squad server is required.** This is a .NET library distributed as a
+NuGet package, not a Copilot plugin. It executes inside the consumer's MAF application.
+That application supplies its model client, project storage, human approval UI and
+any external tools. GitHub Pages hosts documentation only, never the agent runtime.
+Optional service hosting and future NuGet publishing are explained in the
+[maintainer guide](docs/maintaining.html), not presented as shipped infrastructure.
 
-The last four rows are the only place Agent Framework would earn its keep, and they correspond to
-the execution expansion the MCP server has deferred. If that expansion happens, an Agent Framework
-execution tier would sit *behind* the MCP edge rather than beside it.
+To publish the site after reviewing and pushing these changes, set the repository's
+**Settings > Pages > Source** to **GitHub Actions** and run **Deploy documentation**
+from `main`. The actual workflow deployment output supplies the URL; adding these
+files alone does not make the site live.
 
-## Design
+## Supported behavior
 
-The decision to build an adapter rather than fork MAF or rewrite the squad in C# is recorded in
-[ADR-0001](https://github.com/Peter-N91/hve-squad/blob/main/docs/planning/adrs/0001-host-hve-squad-on-microsoft-agent-framework-via-adapter.md)
-in the hve-squad repository.
+| Capability | Native implementation |
+| --- | --- |
+| Simple setup | `SquadRuntime.CreateAsync`, or `AddHveSquad` with configuration and the application's existing `IChatClient` |
+| Release alignment | Defaults to GitHub's latest published stable release, resolved to an exact commit before installation |
+| Roles and profiles | Reads the release's cast, profiles, packs and selection cues; rejects missing, disabled or off-roster agents |
+| Delivery | Research, plan with phase details, conditional intake/council, one producing role, then review |
+| Focused requests | Research-only, plan-only and review-only runs have distinct completion statuses |
+| Skills | Native `AgentSkillsProvider` loads canonical skill names and referenced resources, including APM-renamed directories |
+| Human interaction | Host callbacks confirm initialization, routing, plan/implementation and consequential tool calls; unanswered questions stop work |
+| Evidence | Verifies artifacts, companion files, output hashes and dispatch history before advancing |
+| Return-only roles | Intake and other applicable roles return typed findings, persisted as Scribe receipts rather than fake agent-written deliverables |
+| Host tools | Explicit function registrations bind role permissions, effects and successful output evidence |
+| Persistence | Release-bound MAF conversation sessions, confirmed answers, history, decisions and observed consumption |
 
-```mermaid
-flowchart LR
-    A["squad artifacts<br/>.agent.md, SKILL.md"] --> B[SquadArtifactLoader]
-    A -.unchanged.-> G[GitHub Copilot<br/>VS Code agent loop]
-    B --> C[SquadAgentFactory]
-    B --> D[SquadWorkflowBuilder]
-    C --> E[Agent Framework runtime]
-    D --> E
-```
+**This is not full Copilot-host parity.** The runtime currently supports interactive,
+single-squad operation with one producing-role owner per delivery turn. Federation,
+Watch Mode, autonomous/autopilot loops, discovery interviews, multi-owner fan-out,
+remote approval transports and skill-script execution are not implemented. Unsupported
+modes fail explicitly rather than silently skipping their contracts. The library
+provides no unrestricted shell, deployment, tracker, web-search or model credentials.
+Those capabilities need explicit host integration.
 
-| Layer                  | Type                    | Responsibility                                              |
-|------------------------|-------------------------|-------------------------------------------------------------|
-| Artifact source        | `SquadArtifactSource`   | Locates or acquires the artifact directories                |
-| Artifact loader        | `SquadArtifactLoader`   | Parses charters, the roster, and skill directories          |
-| Agent factory          | `SquadAgentFactory`     | Materializes each charter as a MAF `AIAgent`                |
-| Workflow builder       | `SquadWorkflowBuilder`  | Turns stages and `agents:` allowlists into workflow graphs  |
-| Fluent entry point     | `HveSquadBuilder`       | Composes the layers                                          |
+The native Scribe is a deterministic persistence service, not a model agent. It owns
+the state directory and writes evidence only for actual specialist dispatches. Its
+versioned state format is separate from Copilot's, so existing Copilot squad state
+cannot be adopted or overwritten implicitly.
 
-### Artifact mapping
+### Why federation is not implemented yet
 
-| hve-squad artifact                           | Agent Framework primitive                     |
-|----------------------------------------------|-----------------------------------------------|
-| `.agent.md` frontmatter `name`/`description` | `ChatClientAgentOptions.Name`/`.Description`  |
-| `.agent.md` body                             | `ChatOptions.Instructions`                    |
-| `model:` list                                | chat client selection via `WithChatClientSelector` |
-| `agents:` allowlist                          | handoff edges                                 |
-| `team.md` roster                             | role to charter resolution                    |
-| `SKILL.md` directories                       | MAF `AgentFileSkill` sources                  |
+This is an implementation scope limitation, **not an Agent Framework limitation**.
+The native preview built one governed squad first. It has a fixed per-project state
+root, one roster, and a single-writer Scribe. Federation needs a coordinator above
+multiple squads, a registry and meta-routing, isolated sub-squad state roots and
+locks, cross-squad input permissions, correlated approvals, and aggregate evidence
+and outcomes. Native child-agent dispatch does not provide these contracts.
 
-## Getting the artifacts
+MAF can host that orchestration, but simply removing the unsupported-mode guard
+would risk state collisions and bypassed gates. The
+[federation guide](docs/federation.html) describes the missing work and possible
+implementation sequence. No MCP service is inherently required to add it.
 
-This package ships no squad content. It reads an artifact tree that must already exist, and it never
-fetches hve-squad from git.
+## Prerequisites
 
-That is deliberate. A `git clone` of hve-squad contains only `squad-src/` — roughly 20 squad-owned
-charters. The complete set (83 charters, 62 skills on a current install) is produced by `apm install`,
-which resolves the pinned dependency graph from `apm.yml`. `.github/` and `.agents/` are git-ignored
-in hve-squad precisely because they are generated. A clone-based source would therefore hand you a
-graph whose delegation edges do not resolve, which is why one is not provided.
+- .NET 10 SDK.
+- Git and [APM CLI](https://github.com/microsoft/apm) on PATH. APM 0.18.0 is used in compatibility CI.
+- Network access to GitHub and APM dependencies when resolving a release. The
+  default path acquires the complete matched dependency tree, not just a source clone.
+- For model execution, an application-provided `Microsoft.Extensions.AI.IChatClient`.
+  The sample uses the official OpenAI .NET adapter.
 
-Redistributing the artifacts inside the NuGet package is also out of scope: hve-squad's `NOTICE`
-states that dependencies are fetched at install time and not redistributed, and this package keeps
-that posture.
-
-| Source                    | Use when                                          | Network |
-|---------------------------|---------------------------------------------------|---------|
-| `ProjectArtifactSource`   | The consumer already ran `apm install` (default)  | No      |
-| `DirectoryArtifactSource` | Paths are known, for example in CI                | No      |
-| `ApmArtifactSource`       | Nothing is installed; delegates to the APM CLI    | First run |
-| `CompositeArtifactSource` | Layering a local override over an installed tree  | Varies  |
-
-### The normal path
-
-A consumer installs the squad into their project the same way they would to use it from Copilot:
+The package is not published to NuGet by this change. Use a project reference, or
+build a local package:
 
 ```powershell
-apm install "Peter-N91/hve-squad#vX.Y.Z" --target copilot
+dotnet build HveSquad.AgentFramework.slnx
+dotnet pack src\HveSquad.AgentFramework --configuration Release --output artifacts
 ```
 
-The adapter then finds it with no configuration, by walking up from the working directory:
+## Use in an existing MAF application
+
+The host retains ownership of its model client. A runtime is scoped to one project,
+serializes its own turns, and must be disposed by its caller.
 
 ```csharp
-var squad = await new HveSquadBuilder()
-    .FromInstalledProject()
-    .WithChatClient(chatClient)
-    .WithAgent("Squad Researcher")
-    .WithAgent("Squad Lead")
-    .WithAgent("Squad Reviewer")
-    .BuildAsync();
+using System.Text.Json;
+using HveSquad.AgentFramework.Runtime;
 
-Console.WriteLine(squad.Origin);   // installed project at 'C:\my-project'
-Console.WriteLine(squad.ToMermaid());
+// chatClient is the IChatClient already configured by your application.
+var options = new SquadRuntimeOptions
+{
+    ProjectPath = @"C:\projects\my-app",
+    Profile = "default",
+    Version = "latest", // Or a published stable tag such as "v0.16.2".
+    ApproveAsync = async (proposal, cancellationToken) =>
+    {
+        Console.WriteLine(JsonSerializer.Serialize(proposal));
+        Console.Write("Approve this exact proposal? Type yes: ");
+        return string.Equals(
+            await Console.In.ReadLineAsync(cancellationToken),
+            "yes",
+            StringComparison.OrdinalIgnoreCase);
+    },
+    AskAsync = async (question, cancellationToken) =>
+    {
+        Console.WriteLine(question.Question);
+        return await Console.In.ReadLineAsync(cancellationToken);
+    },
+};
+
+using var squad = await SquadRuntime.CreateAsync(chatClient, options);
+Console.WriteLine(squad.Provenance.Release);
+var result = await squad.RunAsync("Research this project's error-handling approach.");
+Console.WriteLine($"{result.Status}: {result.ResponseText}");
 ```
 
-### No local install
+Before creating any squad state, the host must confirm the complete initialization
+proposal: single-squad scope, profile/packs, roster, member naming and approval channel.
+No approval callback means `ApprovalRequired`, not implicit approval. Use your
+application's UI for these callbacks in a web or desktop host.
 
-`ApmArtifactSource` shells out to the APM CLI and caches the result under `LocalApplicationData`:
+### Configuration and dependency injection
+
+```json
+{
+  "HveSquad": {
+    "ProjectPath": "C:\\projects\\my-app",
+    "Profile": "default",
+    "Version": "latest",
+    "Mode": "interactive",
+    "Packs": [],
+    "MaxDispatches": 32,
+    "MaxModelCalls": 64
+  }
+}
+```
 
 ```csharp
-    .FromPackage("Peter-N91/hve-squad#v0.12.7")
+using HveSquad.AgentFramework.Hosting;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
+
+services.AddSingleton<IChatClient>(chatClient);
+services.AddHveSquad(
+    configuration.GetSection("HveSquad"),
+    configureHost: options =>
+    {
+        options.ApproveAsync = ApproveInYourApplicationAsync;
+        options.AskAsync = AskInYourApplicationAsync;
+    });
+
+// Resolve from the application's service provider:
+var factory = serviceProvider.GetRequiredService<SquadRuntimeFactory>();
+using var squad = await factory.CreateAsync(cancellationToken);
+var result = await squad.RunAsync(request, cancellationToken);
 ```
 
-The reference must be pinned; unpinned specs are rejected so a run is reproducible. Arguments are
-passed through `ProcessStartInfo.ArgumentList` rather than a shell, so a spec cannot inject extra
-arguments. This requires `apm` on PATH.
+`ApproveInYourApplicationAsync` and `AskInYourApplicationAsync` are your application's
+callbacks, with the signatures shown in the direct example. Registration is lazy:
+network access and artifact acquisition occur in `CreateAsync`, not in a DI constructor.
+Each factory call creates an independently owned runtime. Configuration binds only
+known data settings; delegates, model selectors, tools and logging are host-only.
 
-### Local override
+### Supplying real capabilities
 
-During squad development, layer a working tree over the installed one. Earlier roots win:
+Agents can read project files and write scoped methodology artifacts. A report alone
+does not prove that source code, infrastructure or an external system changed.
+Implementation requires a trusted host function, for example:
 
 ```csharp
-    .FromSource(new CompositeArtifactSource(
-        new DirectoryArtifactSource([@"C:\Solutions\hve-squad\squad-src\.github"]),
-        new ProjectArtifactSource()))
+options.Tools.Add(new SquadToolRegistration(
+    function,                    // An AIFunction implemented by the host.
+    "edit",                      // Permission corresponding to the charter.
+    ["developer"],               // Only these roster roles can call it.
+    SquadToolEffect.ProjectWrite,
+    OutputEvidence: result => ExtractSuccessfulOutputs(result)));
 ```
 
-## Usage
+`ExtractSuccessfulOutputs` must return a `SquadToolOutput` based on the function's
+actual successful result, never on model claims. Its `ProjectPaths` are verified
+project-relative output files; external operations require a meaningful receipt.
+Failed or dry-run operations must not attest an applied effect. For a host-specific
+producing role, `RequireOutputForCompletion: true` can require the configured effect.
 
-Roles resolve through the roster when the squad has run at least once:
+The sample's `ProjectFileWriter` demonstrates a contained source writer and output
+attestation. Every consequential call requires a separate host approval containing
+the actual arguments. Hosts are responsible for honest effect classification,
+resource isolation and not mutating the runtime's shared state through custom tools.
 
-```csharp
-    .WithRole("lead")
-    .WithRole("developer")
-```
+Host output files are hashed as raw bytes, including binary artifacts, with a
+64 MiB per-file limit. Repeated approved edits in one dispatch retain all receipts
+and verify the last observed contents. Overlapping output ownership across distinct
+dispatches fails closed rather than treating an earlier artifact as unchanged.
+A presenter needs a host-backed `.pptx` output; a Markdown report does not count as
+a rendered deck. The runtime verifies file evidence, not the internal validity of
+an Office package, and supplies no renderer itself.
 
-Charter `model:` preferences can drive provider selection:
+Use `ModelSelector` for per-role clients and explicit model IDs, and
+`EnableOpenTelemetry` for tracing. Provider-reported token counts are recorded;
+unknown counts, model identities and costs remain unknown rather than invented.
 
-```csharp
-    .WithChatClientSelector(charter =>
-        charter.ModelPreferences.Any(m => m.Contains("Claude")) ? anthropic : azureOpenAI)
-```
+## Staying aligned with HVE Squad releases
 
-### Inspect an artifact tree
+`Version = "latest"` resolves `/repos/Peter-N91/hve-squad/releases/latest`.
+The source validates that it is a published stable semantic-version release,
+resolves the **tag** to its commit SHA, and installs that SHA through APM.
+It never uses the release's `target_commitish` field, a branch head, or `main`.
 
-The sample renders the graph offline, with no model credentials. Run it from inside any project that
-has the package installed:
+The currently exercised release is **v0.16.2**, commit
+`a941195c36dfb6181453f51ec4638b085ca3b3ad`. Its APM manifest provides the matched
+HVE Core dependency pin; upstream roles and rules are not maintained as duplicate
+prompt text in this repository.
+
+- A new runtime using `latest` checks for the current published stable release.
+  A running runtime retains its resolved release and rejects artifact changes.
+- Cache inventories cover deployed agents, instructions and complete skill resources.
+  Missing or changed files invalidate the cache and trigger reacquisition.
+- Authentication/rate-limit/network failures are reported; there is no silent
+  fallback to `main`, a prerelease or another version.
+- For reproducible/offline operation, resolve/install a release in advance and pass
+  a `ProjectArtifactSource` for that installed directory. Explicit directory sources
+  are host-managed overrides, not proof of published-release provenance.
+- Existing native state is bound to the release, artifact fingerprint and roster.
+  A new release cannot silently resume an old conversation. Keep the original
+  version for that project, use a fresh project, or supply an explicit host migration.
+  Automatic state migration is not implemented.
+
+After this repository's changes are pushed, `release-compatibility.yml` runs on
+pushes, pull requests, manual dispatch and daily. It exercises both v0.16.2 and
+the latest stable release with a scripted model, including full-profile intake
+and council. It never publishes packages or changes consumer state automatically.
+New upstream formats or safety contracts can still require adapter changes:
+**automatic acquisition is not a guarantee of automatic behavioral compatibility.**
+
+## Runnable sample
+
+Credential-free release inspection:
 
 ```powershell
-dotnet run --project samples/HveSquad.AgentFramework.Sample
+dotnet run --project samples\HveSquad.AgentFramework.Sample -- --latest
+dotnet run --project samples\HveSquad.AgentFramework.Sample -- --release v0.16.2
 ```
 
-```text
-Origin:    installed project at 'C:\Solutions\hve-squad'
-Charters:  83
-Skills:    62
-Roster:    8 member(s)
+With no arguments the inspector searches for an installed project; explicit
+artifact-directory arguments remain supported.
 
-Staged workflow:
-flowchart TD
-  ...
-```
-
-Explicit roots still work:
+For a live run, configure `OPENAI_API_KEY` and `OPENAI_MODEL` securely in the host
+environment. Optional `OPENAI_ENDPOINT` supports an OpenAI-compatible endpoint,
+including a correctly configured Azure OpenAI v1 endpoint. No credentials are
+stored in the repository.
 
 ```powershell
-dotnet run --project samples/HveSquad.AgentFramework.Sample -- C:\my-project\.github C:\my-project\.agents
+dotnet run --project samples\HveSquad.AgentFramework.Sample -- `
+  --run "Research and plan a small improvement to error handling" `
+  --project C:\projects\my-app --version latest --profile default
 ```
 
-## What the artifact tree actually looks like
+Alternatively, `--config <run.json>` accepts `request`, `project`, `version` and
+`profile`. The console waits for explicit `yes` on approvals and supports Ctrl+C.
+It exposes only a contained `write_project_file` source tool, not shell/build/test
+execution or external research. Add those functions in your own host when required;
+the sample does not imply that unavailable operations ran.
 
-Building this surfaced four facts that are easy to get wrong:
-
-1. **A squad source tree is an incomplete graph.** `squad-src/.github` charters delegate to HVE Core
-   agents that arrive only through package install, and a git clone carries nothing else. Use an
-   installed tree.
-2. **Skills do not live under `.github`.** They deploy to `.agents/skills/`, so skill discovery needs
-   its own root.
-3. **The deployed tree is flat; the source tree is nested.** Discovery must be recursive and must not
-   assume either layout.
-4. **Not every charter declares `name:`.** The host falls back to the filename, and so does the
-   loader.
-
-`SquadArtifacts.FindUnresolvedDelegations()` reports dangling `agents:` edges, which is the fastest
-way to tell whether every dependency root was supplied.
-
-## Build
+## Development and compatibility checks
 
 ```powershell
-dotnet build
-dotnet test
+dotnet test HveSquad.AgentFramework.slnx
+
+# Acquire and exercise the exact published release with a scripted IChatClient.
+$env:HVE_SQUAD_RELEASE_VERSION = "v0.16.2"
+$env:HVE_SQUAD_REQUIRE_RELEASE_TESTS = "true"
+dotnet test tests\HveSquad.AgentFramework.Tests --filter Category=ReleaseCompatibility
 ```
 
-The real-artifact tests locate hve-squad automatically when it is checked out beside this
-repository, or via the `HVE_SQUAD_ROOT` environment variable. They pass silently when it is absent.
+Use `HVE_SQUAD_RELEASE_VERSION=latest` for the current stable release, or
+`HVE_SQUAD_RELEASE_ROOT` for an already-installed project containing `.github`
+and `.agents`. These checks require no paid model calls and do not establish
+live-model quality or complete Copilot parity.
 
-## Repository layout
+### Security and repository automation
 
-- `src/HveSquad.AgentFramework/`: the adapter library
-- `tests/HveSquad.AgentFramework.Tests/`: fixture and real-artifact tests
-- `samples/HveSquad.AgentFramework.Sample/`: offline artifact inspector
-- `tools/ApiDump/`: reflection helper for checking the MAF API surface after a version bump
+The workflows adapt HVE Squad's security approach to this C# library and static site:
 
-## Not yet built
+| Workflow | Purpose |
+| --- | --- |
+| `codeql.yml` | C# manual-build analysis and JavaScript analysis |
+| `checkov.yml` | Blocking Actions/secrets checks and IaC/container checks when relevant files exist |
+| `zizmor.yml` | Blocking offline GitHub Actions analysis |
+| `dependency-review.yml` | High/critical newly introduced dependency advisories block pull requests |
+| `dependency-audit.yml` | Direct/transitive NuGet audit; high/critical advisories and incomplete feeds block |
+| `scorecard.yml` | Supply-chain assessment reports, no public Scorecard API publication or badge |
+| `release-compatibility.yml` | Build, tests, package, public documentation links and released upstream contracts |
+| `docs.yml` | Least-privilege static Pages deployment from `main` |
 
-Python parity, memory retrieval policy, consumption accounting over OpenTelemetry spans,
-multi-repository delivery, MCP hosting for Copilot Studio, and mapping the Impactful-Action Gate onto
-`ToolApprovalAgent`. Each is a deferred decision in ADR-0001.
+Dependabot proposes weekly NuGet and action updates. Repository dependency graph,
+code scanning, secret scanning/push protection and branch rules must still be enabled
+where available; workflow files cannot configure them. Set the Actions variable
+`SECURITY_SARIF_UPLOAD=true` to opt into trusted-main Checkov/Zizmor code-scanning
+uploads. Their report artifacts are retained regardless. See
+[workflow activation and maintenance](docs/maintaining.html#workflows) for permissions,
+feature availability, severity policy and publishing boundaries.
+
+The lower-level `HveSquadBuilder`, `SquadAgentFactory` and `SquadWorkflowBuilder`
+remain available for artifact inspection and custom composition. They are not the
+governed runtime entry point; use `SquadRuntime` when you need its enforced gates.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
-
-This project depends on Microsoft Agent Framework and hve-squad, which carry their own licenses. It
-is not affiliated with or endorsed by Microsoft.
+MIT. See [LICENSE](LICENSE). Upstream artifacts are acquired at installation time,
+not redistributed in this package, and retain their own licenses. This project is
+not affiliated with or endorsed by Microsoft.

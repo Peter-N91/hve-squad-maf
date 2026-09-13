@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HVE Squad for Agent Framework | Governed agents, native .NET</title>
+<meta name="description" content="Bring released HVE Squad roles, evidence gates, and human approvals into your own Microsoft Agent Framework application. Native .NET, your model, your host.">
+<script>(() => { const param = new URLSearchParams(window.location.search).get("scoutTheme"); const theme = param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); document.documentElement.setAttribute("data-theme", theme); })();</script>
+<style>
+:root { color-scheme: light; --cp-bg: #f7f4ef; --cp-bg-elevated: #fcfbf8; --cp-surface: #ffffff; --cp-surface-soft: #f5f5f5; --cp-border: #dedede; --cp-border-strong: #919191; --cp-text: #242424; --cp-text-muted: #5c5c5c; --cp-text-soft: #6f6f6f; --cp-accent: #b11f4b; --cp-accent-hover: #9a1a41; --cp-accent-soft: rgba(177, 31, 75, 0.08); --cp-accent-fg: #ffffff; --cp-success: #16a34a; --cp-danger: #dc2626; --cp-warning: #f59e0b; --cp-link: #0078d4; --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12); --cp-overlay: rgba(255, 255, 255, 0.8); --cp-panel: rgba(255, 255, 255, 0.86); --cp-panel-strong: rgba(255, 255, 255, 0.96); --cp-sheen: rgba(255, 255, 255, 0.55); --cp-highlight: rgba(177, 31, 75, 0.12); }
+html[data-theme="dark"] { color-scheme: dark; --cp-bg: #3d3b3a; --cp-bg-elevated: #343231; --cp-surface: #292929; --cp-surface-soft: #2e2e2e; --cp-border: #474747; --cp-border-strong: #5f5f5f; --cp-text: #dedede; --cp-text-muted: #919191; --cp-text-soft: #b0b0b0; --cp-accent: #fd8ea1; --cp-accent-hover: #fb7b91; --cp-accent-soft: rgba(253, 142, 161, 0.14); --cp-accent-fg: #1a1a1a; --cp-success: #4ade80; --cp-danger: #f87171; --cp-warning: #fbbf24; --cp-link: #4da6ff; --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32); --cp-overlay: rgba(41, 41, 41, 0.88); --cp-panel: rgba(41, 41, 41, 0.72); --cp-panel-strong: rgba(41, 41, 41, 0.96); --cp-sheen: rgba(255, 255, 255, 0.04); --cp-highlight: rgba(253, 142, 161, 0.12); }
+</style>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<aside class="sidebar">
+  <a class="brand" href="index.html"><img src="assets/logo.svg" alt="" width="48" height="48"><span>HVE Squad<small>for Agent Framework</small></span></a>
+  <button class="mobile-toggle" type="button" aria-controls="site-navigation" aria-expanded="true" hidden>Menu</button>
+  <nav id="site-navigation" aria-label="Main navigation"><p class="nav-label">Documentation</p><a href="index.html" aria-current="page">Overview</a><a href="getting-started.html">Getting started</a><a href="usage.html">Runtime reference</a><a href="hosting.html">Hosting &amp; operations</a><a href="use-cases.html">Use cases</a><a href="federation.html">Federation &amp; scope</a><a href="maintaining.html">Contributing &amp; maintaining</a></nav>
+  <div class="sidebar-bottom"><p>Native .NET 10 · MAF 1.17</p><p>0.1.0-preview.1 · Unpublished</p><a href="https://github.com/Peter-N91/hve-squad-maf">View source on GitHub ↗</a></div>
+</aside>
+<div class="shell">
+<header class="topbar"><span>A community-built integration</span><div class="topbar-actions"><a href="https://github.com/Peter-N91/hve-squad">HVE Squad ↗</a><button class="theme-toggle" type="button" hidden>Theme</button></div></header>
+<main id="main">
+  <div class="hero">
+    <div><p class="eyebrow">HVE methodology. Native MAF execution.</p><h1>A squad.<br>Your app.<br><span class="accent">Real evidence.</span></h1><p class="lede">Give your Agent Framework application a disciplined team, not just a collection of prompts. Research, plan, produce, and review with released HVE Squad roles and a human in control.</p><div class="actions"><a class="button" href="getting-started.html">Build your first squad <span aria-hidden="true">→</span></a><a class="button secondary" href="hosting.html">Understand the host</a></div><p class="micro">Your IChatClient. Your project. No separate squad server.</p></div>
+    <div class="hero-visual" aria-label="Single-squad workflow illustration">
+      <div class="visual-heading"><span>One governed delivery turn</span><span>.NET / MAF</span></div>
+      <img class="hero-logo" src="assets/logo.svg" alt="Three connected squad nodes around a command coordinator" width="162" height="162">
+      <ol class="flow"><li>01 · Research <span>Evidence first</span></li><li>02 · Plan + details <span>Explicit ownership</span></li><li class="gate">Human approval <span>Not a model decision</span></li><li>03 · Produce <span>One owning role</span></li><li>04 · Review <span>Verified outputs</span></li></ol>
+      <p class="visual-foot">Conditional intake and council add gates when required.</p>
+    </div>
+  </div>
+  <div class="facts"><div><strong>Native, not a proxy</strong><span>Microsoft.Agents.AI 1.17.0 on .NET 10</span></div><div><strong>Released, not branch-head</strong><span>Stable release → tag → commit → APM graph</span></div><div><strong>Preview, not published</strong><span>Use a project reference or local package feed</span></div></div>
+  <section aria-labelledby="why"><p class="eyebrow">Why HVE Squad inside MAF?</p><h2 id="why">Bring the method into the application.</h2><p class="section-intro">MAF supplies the agent execution primitives. This integration adds the released HVE Squad methodology, roster resolution, approval gates, and evidence-backed state around those primitives.</p><div class="grid">
+    <article class="card"><span class="card-number">01 / CONTINUITY</span><h3>Keep the roles aligned</h3><p>Load real charters, instructions, and skill resources from a published HVE Squad release. The NuGet package does not carry a forked copy of the prompts.</p><a href="usage.html#acquisition">Follow the release chain →</a></article>
+    <article class="card"><span class="card-number">02 / CONTROL</span><h3>Keep the host in charge</h3><p>Use your model provider, your authenticated interface, and your approved tools. A prompt cannot grant file, deployment, or external-system permissions.</p><a href="usage.html#tools">Understand tool boundaries →</a></article>
+    <article class="card"><span class="card-number">03 / ACCOUNTABILITY</span><h3>Keep the receipts</h3><p>The deterministic Scribe records actual dispatches, output hashes, confirmed answers, and observed consumption. A claimed action is not an executed action.</p><a href="usage.html#results">Read the result contract →</a></article>
+  </div></section>
+  <section aria-labelledby="fit"><h2 id="fit">Start with work that benefits from a gate.</h2><div class="grid two">
+    <article class="card"><h3>Modernize with a plan</h3><p>Understand a legacy application, identify constraints, and approve a phased change before granting source-editing capabilities.</p><a href="use-cases.html#modernization">Modernization workflow →</a></article>
+    <article class="card"><h3>Make infrastructure changes accountable</h3><p>Connect narrowly scoped host tools to an IaC workflow. Keep plan, approval, execution receipt, and review separate.</p><a href="use-cases.html#infrastructure">Evidence-gated IaC →</a></article>
+    <article class="card"><h3>Embed an enterprise research team</h3><p>Reuse the application's model binding and user experience, with explicit input artifacts and a single producing owner.</p><a href="use-cases.html#enterprise">Enterprise integration →</a></article>
+    <article class="card"><h3>Review an existing deliverable</h3><p>Supply existing targets, ask for focused review, and stop with a review-specific outcome rather than a delivery claim.</p><a href="use-cases.html#review">Focused review →</a></article>
+  </div></section>
+  <section aria-labelledby="boundary"><h2 id="boundary">A clear boundary is a feature.</h2><div class="callout"><p><strong>Interactive. Single squad. One producing-role owner per turn.</strong></p><p>This preview does not implement federation, Watch Mode, autonomous/autopilot loops, discovery interviews, or multi-owner fan-out. Native child dispatch is real delegation, but it is not federation.</p><a href="federation.html">Why this scope was chosen, and what federation would require →</a></div><p>No bundled search, shell, test runner, deployment executor, or PowerPoint renderer is implied by a role's presence. Real-world effects require your actual registered host functions and successful evidence. <code>Completed</code> does not mean deployed or independently host-validated.</p></section>
+  <section aria-labelledby="start"><p class="eyebrow">From documentation to a running host</p><h2 id="start">Start small. Make every capability explicit.</h2><p class="section-intro">Inspect the release without model credentials. Bind an existing IChatClient. Run a focused request. Add effectful tools only when their approval and evidence contracts are ready.</p><div class="actions"><a class="button" href="getting-started.html">Follow the setup guide →</a><a class="button secondary" href="maintaining.html">Contribute to the preview</a></div></section>
+</main>
+<footer><span>Community project. Not affiliated with or endorsed by Microsoft.</span><span><a href="https://github.com/Peter-N91/hve-squad-maf/blob/main/LICENSE">MIT license</a> · Static docs, no analytics</span></footer>
+</div><p id="copy-status" class="sr-only" role="status" aria-live="polite"></p>
+</body></html>

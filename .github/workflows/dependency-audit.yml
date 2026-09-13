@@ -1,0 +1,124 @@
+name: NuGet vulnerability audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '43 5 * * 3'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: nuget-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Audit direct and transitive packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Restore with vulnerability-feed failures treated as errors
+        shell: bash
+        # Keep advisories visible; the JSON gate below applies the severity policy.
+        run: |
+          mkdir -p security-reports/nuget
+          dotnet restore HveSquad.AgentFramework.slnx --nologo \
+            --source https://api.nuget.org/v3/index.json \
+            -p:NuGetAudit=true -p:NuGetAuditMode=all -p:NuGetAuditLevel=low \
+            -p:WarningsAsErrors=NU1900%3BNU1905%3BNU1801 \
+            -p:WarningsNotAsErrors=NU1901%3BNU1902%3BNU1903%3BNU1904 \
+            2>&1 | tee security-reports/nuget/restore.txt
+      - name: Audit packages (high and critical block)
+        env:
+          DOTNET_CLI_UI_LANGUAGE: en
+        shell: python
+        run: |
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+          import xml.etree.ElementTree as ET
+
+          directory = Path("security-reports/nuget")
+          result = subprocess.run([
+              "dotnet", "list", "HveSquad.AgentFramework.slnx", "package",
+              "--vulnerable", "--include-transitive", "--format", "json",
+              "--output-version", "1", "--no-restore",
+              "--source", "https://api.nuget.org/v3/index.json",
+          ], capture_output=True, text=True, check=False)
+          (directory / "audit.json").write_text(result.stdout, encoding="utf-8")
+          (directory / "audit-stderr.txt").write_text(result.stderr, encoding="utf-8")
+          if result.returncode != 0 or result.stderr.strip():
+              print(result.stdout)
+              print(result.stderr, file=sys.stderr)
+              sys.exit("NuGet audit failed or reported diagnostics; no clean result can be claimed.")
+          report = json.loads(result.stdout)
+          if report.get("version") != 1 or not report.get("sources"):
+              sys.exit("NuGet returned an unsupported or incomplete report.")
+
+          def reject_diagnostics(value):
+              if isinstance(value, dict):
+                  for key, child in value.items():
+                      if key in {"problems", "errors", "warnings"} and child:
+                          sys.exit(f"NuGet reported incomplete analysis: {child}")
+                      reject_diagnostics(child)
+              elif isinstance(value, list):
+                  for child in value:
+                      reject_diagnostics(child)
+
+          reject_diagnostics(report)
+          expected = {
+              Path(project.attrib["Path"]).resolve()
+              for project in ET.parse("HveSquad.AgentFramework.slnx").iter("Project")
+          }
+          projects = report.get("projects", [])
+          observed = {Path(project["path"]).resolve() for project in projects}
+          if not expected or observed != expected or len(projects) != len(expected):
+              sys.exit("NuGet did not audit every solution project.")
+          counts = dict.fromkeys(("low", "moderate", "high", "critical"), 0)
+          for project in projects:
+              # NuGet omits frameworks entirely when a project has no findings.
+              for framework in project.get("frameworks", []):
+                  for group in ("topLevelPackages", "transitivePackages"):
+                      for package in framework.get(group, []):
+                          for advisory in package.get("vulnerabilities", []):
+                              severity = advisory["severity"].lower()
+                              if severity not in counts:
+                                  sys.exit(f"Unknown advisory severity: {severity}")
+                              counts[severity] += 1
+                              print(f"{project['path']}: {package['id']} "
+                                    f"{package['resolvedVersion']}: {severity}: {advisory['advisoryurl']}")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("## NuGet vulnerability audit\n")
+              summary.write(f"Audited {len(expected)} projects, including transitive dependencies.\n\n")
+              summary.write("High and critical advisories block; low and moderate remain visible.\n\n")
+              for severity, count in counts.items():
+                  summary.write(f"- {severity}: {count}\n")
+          sys.exit(1 if counts["high"] or counts["critical"] else 0)
+      - name: Upload audit reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nuget-audit
+          path: security-reports/nuget/
+          if-no-files-found: warn
+          retention-days: 14

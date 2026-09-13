@@ -1,0 +1,81 @@
+name: Checkov
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '12 4 * * 1'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: checkov-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checkov:
+    name: Workflow and secrets scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install Checkov
+        # Keep the upstream filelock security floor without modifying app dependencies.
+        run: python -m pip install --disable-pip-version-check 'checkov==3.2.533' 'filelock>=3.20.3'
+      - name: Scan (blocking)
+        id: scan
+        # Future IaC/container files are covered when present; none are required.
+        run: |
+          mkdir -p security-reports/checkov
+          set +e
+          checkov --directory . \
+            --framework github_actions secrets dockerfile terraform bicep \
+            --skip-path '(^|/)(\.git|\.apm|apm_modules|\.venv|node_modules|bin|obj|artifacts|TestResults|security-reports)(/|$)' \
+            --compact --output cli --output sarif \
+            --output-file-path console,security-reports/checkov/results.sarif \
+            > security-reports/checkov/cli.txt 2>&1
+          status=$?
+          set -e
+          cat security-reports/checkov/cli.txt
+          echo "exit-code=$status" >> "$GITHUB_OUTPUT"
+          echo "Checkov exit code: $status (nonzero blocks this check)." >> "$GITHUB_STEP_SUMMARY"
+          if [[ -s security-reports/checkov/results.sarif ]] &&
+             jq -e '.version == "2.1.0" and (.runs | type == "array" and length > 0)' security-reports/checkov/results.sarif > /dev/null; then
+            jq '(.runs[].results) |= map(select((.suppressions // []) | length == 0))' \
+              security-reports/checkov/results.sarif > security-reports/checkov/code-scanning.sarif
+            echo "sarif-ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Checkov did not produce valid SARIF; see the CLI artifact."
+            if [[ $status -eq 0 ]]; then status=1; fi
+          fi
+          exit "$status"
+      - name: Upload scan reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: checkov-reports
+          path: security-reports/checkov/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload to code scanning (opt-in, trusted runs)
+        if: >-
+          ${{ !cancelled() && steps.scan.outputs.sarif-ready == 'true' &&
+              vars.SECURITY_SARIF_UPLOAD == 'true' && github.event_name != 'pull_request' &&
+              github.ref == 'refs/heads/main' }}
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          sarif_file: security-reports/checkov/code-scanning.sarif
+          category: checkov

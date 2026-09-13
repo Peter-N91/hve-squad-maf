@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <style>
+    :root { --cp-bg: #fcfbf8; --cp-text: #242424; --cp-accent: #b11f4b; --cp-accent-fg: #ffffff; }
+    @media (prefers-color-scheme: dark) { :root { --cp-bg: #292929; --cp-text: #dedede; --cp-accent: #fd8ea1; --cp-accent-fg: #1a1a1a; } }
+    .badge { fill: var(--cp-bg); stroke: var(--cp-accent); } .links { fill: none; stroke: var(--cp-accent); } .nodes { fill: var(--cp-bg); stroke: var(--cp-text); } .core { fill: var(--cp-accent); } .command { fill: none; stroke: var(--cp-accent-fg); }
+  </style>
+  <polygon class="badge" points="32,3 55.1,16.5 55.1,47.5 32,61 8.9,47.5 8.9,16.5" stroke-width="3" stroke-linejoin="round"/>
+  <path class="links" d="M32 16 18 44H46Z" stroke-width="3"/>
+  <g class="nodes" stroke-width="3"><circle cx="32" cy="16" r="5"/><circle cx="18" cy="44" r="5"/><circle cx="46" cy="44" r="5"/></g>
+  <circle class="core" cx="32" cy="31" r="8"/>
+  <path class="command" d="m30 28 3.5 3-3.5 3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,76 @@
+name: Zizmor
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '30 4 * * 1'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: zizmor-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zizmor:
+    name: Actions security scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install zizmor
+        run: python -m pip install --disable-pip-version-check 'zizmor==1.29.0'
+      - name: Scan (blocking, offline)
+        id: scan
+        # SARIF mode reports findings with exit 0; the result count is the gate.
+        # Offline mode deliberately does not perform GitHub API-backed audits.
+        run: |
+          mkdir -p security-reports/zizmor
+          set +e
+          zizmor --offline --strict-collection --format sarif .github/ \
+            > security-reports/zizmor/results.sarif 2> security-reports/zizmor/cli.txt
+          status=$?
+          set -e
+          cat security-reports/zizmor/cli.txt
+          if [[ -s security-reports/zizmor/results.sarif ]] &&
+             jq -e '.version == "2.1.0" and (.runs | type == "array" and length > 0)' security-reports/zizmor/results.sarif > /dev/null; then
+            echo "sarif-ready=true" >> "$GITHUB_OUTPUT"
+            findings=$(jq '[.runs[].results[]?] | length' security-reports/zizmor/results.sarif)
+            echo "Zizmor: $findings findings; analyzer exit code $status." >> "$GITHUB_STEP_SUMMARY"
+            if [[ $findings -gt 0 && $status -eq 0 ]]; then status=1; fi
+          else
+            echo "::error::Zizmor did not produce valid SARIF; see the CLI artifact."
+            if [[ $status -eq 0 ]]; then status=1; fi
+          fi
+          exit "$status"
+      - name: Upload scan reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: zizmor-reports
+          path: security-reports/zizmor/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload to code scanning (opt-in, trusted runs)
+        if: >-
+          ${{ !cancelled() && steps.scan.outputs.sarif-ready == 'true' &&
+              vars.SECURITY_SARIF_UPLOAD == 'true' && github.event_name != 'pull_request' &&
+              github.ref == 'refs/heads/main' }}
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          sarif_file: security-reports/zizmor/results.sarif
+          category: zizmor
