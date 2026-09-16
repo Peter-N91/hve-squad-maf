@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Getting started | HVE Squad for Agent Framework</title>
-<meta name="description" content="Inspect a released HVE Squad, run the sample, or bind an existing IChatClient using a project reference or an unpublished local NuGet package.">
+<meta name="description" content="Inspect the release, read approved fictional RFP and capability text in a case directory, and embed the unpublished preview in your .NET application through a project reference or local package.">
 <script>(() => { const param = new URLSearchParams(window.location.search).get("scoutTheme"); const theme = param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); document.documentElement.setAttribute("data-theme", theme); })();</script>
 <style>
 :root { color-scheme: light; --cp-bg: #f7f4ef; --cp-bg-elevated: #fcfbf8; --cp-surface: #ffffff; --cp-surface-soft: #f5f5f5; --cp-border: #dedede; --cp-border-strong: #919191; --cp-text: #242424; --cp-text-muted: #5c5c5c; --cp-text-soft: #6f6f6f; --cp-accent: #b11f4b; --cp-accent-hover: #9a1a41; --cp-accent-soft: rgba(177, 31, 75, 0.08); --cp-accent-fg: #ffffff; --cp-success: #16a34a; --cp-danger: #dc2626; --cp-warning: #f59e0b; --cp-link: #0078d4; --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12); --cp-overlay: rgba(255, 255, 255, 0.8); --cp-panel: rgba(255, 255, 255, 0.86); --cp-panel-strong: rgba(255, 255, 255, 0.96); --cp-sheen: rgba(255, 255, 255, 0.55); --cp-highlight: rgba(177, 31, 75, 0.12); }
@@ -14,16 +14,16 @@ html[data-theme="dark"] { color-scheme: dark; --cp-bg: #3d3b3a; --cp-bg-elevated
 <a class="skip-link" href="#main">Skip to content</a>
 <aside class="sidebar"><a class="brand" href="index.html"><img src="assets/logo.svg" alt="" width="48" height="48"><span>HVE Squad<small>for Agent Framework</small></span></a><button class="mobile-toggle" type="button" aria-controls="site-navigation" aria-expanded="true" hidden>Menu</button><nav id="site-navigation" aria-label="Main navigation"><p class="nav-label">Documentation</p><a href="index.html">Overview</a><a href="getting-started.html" aria-current="page">Getting started</a><a href="usage.html">Runtime reference</a><a href="hosting.html">Hosting &amp; operations</a><a href="use-cases.html">Use cases</a><a href="federation.html">Federation &amp; scope</a><a href="maintaining.html">Contributing &amp; maintaining</a></nav><div class="sidebar-bottom"><p>Native .NET 10 · MAF 1.17</p><p>0.1.0-preview.1 · Unpublished</p><a href="https://github.com/Peter-N91/hve-squad-maf">View source on GitHub ↗</a></div></aside>
 <div class="shell"><header class="topbar"><span>Guide / Getting started</span><div class="topbar-actions"><a href="https://github.com/Peter-N91/hve-squad-maf/tree/main/samples">Sample source ↗</a><button class="theme-toggle" type="button" hidden>Theme</button></div></header>
-<main id="main"><p class="eyebrow">From source to first turn</p><h1>Bring a model.<br>Meet your squad.</h1><p class="lede">Begin with a credential-free inspection. Then run the console sample or integrate the library with an IChatClient you already own.</p>
-<div class="callout"><p><strong>The package is not on NuGet.org.</strong> <code>HveSquad.AgentFramework</code> version <code>0.1.0-preview.1</code> is an unpublished preview. Use the project-reference path below, or pack it into a local feed. No separate MCP service is required.</p></div>
+<main id="main"><p class="eyebrow">From approved case inputs to a first turn</p><h1>Bring a model.<br>Start with a business case.</h1><p class="lede">Begin with a credential-free inspection. Then use fictional RFP and product-capability text for a read-only research request. This is a small integration check on the way to an <a href="use-cases.html#rfp">RFP response workbench inside your application</a>, not a coding-assistant workflow.</p>
+<div class="callout"><p><strong>The package is not on NuGet.org.</strong> <code>HveSquad.AgentFramework</code> version <code>0.1.0-preview.1</code> is an unpublished preview. Use the project-reference path below, or pack it into a local feed. No separate MCP service is required. Maintainers follow the <a href="maintaining.html#publishing">package publishing instructions</a> before any public installation claim.</p></div>
 <nav class="toc" aria-label="On this page"><p>On this page</p><ul><li><a href="#prerequisites">Prerequisites</a></li><li><a href="#inspect">Inspect</a></li><li><a href="#sample">Run the sample</a></li><li><a href="#reference">Project reference</a></li><li><a href="#binding">IChatClient binding</a></li><li><a href="#package">Local package</a></li><li><a href="#di">Dependency injection</a></li></ul></nav>
 <section id="prerequisites"><h2>What you need</h2><div class="table-wrap"><table><thead><tr><th scope="col">Dependency</th><th scope="col">When and why</th></tr></thead><tbody>
 <tr><td>.NET 10 SDK</td><td>Build and run the library and sample. The integration uses Microsoft.Agents.AI 1.17.0 and Microsoft.Extensions.AI 10.8.3.</td></tr>
 <tr><td>Git + APM CLI</td><td>On PATH for first release acquisition. Compatibility CI exercises APM 0.18.0. Install using the <a href="https://github.com/microsoft/apm">official APM instructions</a>.</td></tr>
 <tr><td>GitHub / dependency access</td><td>Resolve a published release and install its full pinned dependency graph. A source clone alone is not the installed skill tree.</td></tr>
-<tr><td>Your project directory</td><td>An existing writable project, preferably a separate test checkout for your first run. Use a fresh project without existing Copilot squad state.</td></tr>
+<tr><td>A dedicated case directory</td><td>An existing writable directory for approved input text, output artifacts, and native state. <code>ProjectPath</code> is its API name; a business case needs no code checkout or Git repository. Use a fresh isolated directory without existing Copilot squad state.</td></tr>
 <tr><td>A model binding</td><td>Only live execution needs IChatClient and a capable model. The sample uses the official OpenAI adapter. A local compatible model can work if your provider supports the required tool-calling behavior.</td></tr>
-</tbody></table></div><p>Commands below use PowerShell and Windows paths. Change <code>C:\Solutions</code> and <code>C:\projects</code> to your own workspace locations.</p></section>
+</tbody></table></div><p>Commands below use PowerShell and Windows paths. Change <code>C:\Solutions</code>, <code>C:\projects</code>, and <code>C:\app-data</code> to your own authorized locations. The integration source checkout and the business case directory are different things: Git/APM acquire released artifacts; the case directory persists application work.</p></section>
 <section id="inspect"><h2>01. Inspect a published release</h2><p>Clone the integration repository if you do not have it yet, then build it. Inspection makes no paid model calls, but the release commands require network and APM access.</p>
 <div class="code-block"><div class="code-heading">PowerShell · Clone and verify tools</div><pre><code>New-Item -ItemType Directory -Force C:\Solutions | Out-Null
 Set-Location C:\Solutions
@@ -39,22 +39,26 @@ dotnet run --project samples\HveSquad.AgentFramework.Sample -- --latest</code></
 <p>Expect the release tag, commit, artifact counts, available profiles and packs, and a staged workflow description. For <code>v0.16.2</code>, the exercised commit is <code>a941195c36dfb6181453f51ec4638b085ca3b3ad</code>. Warnings about opt-in external delegates do not imply those capabilities are installed.</p>
 <p>With no arguments, the inspector searches upward for installed project artifacts. Positional directory arguments inspect explicit artifact roots. Neither path is the live runtime's default release acquisition.</p></section>
 <section id="sample"><h2>02. Run the existing console sample</h2><p>Provision <code>OPENAI_API_KEY</code> and <code>OPENAI_MODEL</code> in the process environment through your secret manager or secure local configuration. Do not put credentials in source, command history, or run JSON. The sample requires both variables.</p><p><code>OPENAI_ENDPOINT</code> is optional and must be an absolute HTTP or HTTPS URI. Use HTTPS for remote providers; plain HTTP is only appropriate for an explicitly trusted local endpoint. OpenAI-compatible providers, including a correctly configured Azure OpenAI v1 endpoint, must support the selected model and tool calls.</p>
-<div class="code-block"><div class="code-heading">PowerShell · First live research request</div><pre><code>Set-Location C:\Solutions\hve-squad-maf
-New-Item -ItemType Directory -Force C:\projects\squad-demo | Out-Null
+<div class="code-block"><div class="code-heading">PowerShell · Fictional text inputs and a live research request</div><pre><code>Set-Location C:\Solutions\hve-squad-maf
+New-Item -ItemType Directory -Force C:\app-data\bid-cases\demo\inputs | Out-Null
+Set-Content -LiteralPath C:\app-data\bid-cases\demo\inputs\rfp.txt -Encoding utf8 `
+  -Value "RFP-01 (fictional): Which input formats does the knowledge-search product support?"
+Set-Content -LiteralPath C:\app-data\bid-cases\demo\inputs\approved-capabilities.txt -Encoding utf8 `
+  -Value "CAP-01 (fictional approved evidence): Knowledge search accepts plain text. No other formats are evidenced."
 
 dotnet run --project samples\HveSquad.AgentFramework.Sample -- `
-  --run "Research this project's error-handling approach. Do not implement changes." `
-  --project C:\projects\squad-demo `
+  --run "Research the question in inputs\rfp.txt using inputs\approved-capabilities.txt. Cite source identifiers and report gaps. Stop after research; do not change inputs or send anything externally." `
+  --project C:\app-data\bid-cases\demo `
   --version v0.16.2 `
-  --profile default</code></pre></div>
-<p>Use a real code checkout instead of the empty demo directory for useful project-specific research. Review the complete initialization and routing proposals. Only enter <code>yes</code> when you approve the proposal actually shown. Answer any questions, or stop with Ctrl+C.</p>
-<div class="callout"><p><strong>What the sample can actually do:</strong> read project files, write scoped methodology artifacts, and use a contained <code>write_project_file</code> tool for the <code>developer</code> role after explicit approval. It has no shell, build, test, search, or deployment executor. A plan that requires those operations needs a different host integration.</p></div>
+  --profile full</code></pre></div>
+<p>These fixture files contain no real customer or product data. Use a fresh demo directory; the commands replace the two named files. Review the complete initialization and routing proposals, including the research-only scope. Only enter <code>yes</code> when you approve the proposal actually shown. Answer any questions, or stop with Ctrl+C. A focused research run writes research evidence, not a completed proposal response.</p>
+<div class="callout"><p><strong>What the sample can actually do:</strong> read contained case files and write scoped methodology artifacts. It also registers a contained <code>write_project_file</code> tool for the <code>developer</code> role after explicit approval; that optional source-writing demonstration is not needed for this request or the application's business proposition. It has no shell, build, test, web-search, or deployment executor. The library binding below registers no host tools.</p></div>
 <h3>Configuration-file alternative</h3><p>Save this content as <code>run.json</code> in the integration repository. These are sample CLI fields, not the complete runtime configuration schema.</p>
 <div class="code-block"><div class="code-heading">JSON · run.json</div><pre><code>{
-  "request": "Research and plan a small error-handling improvement. Stop after planning.",
-  "project": "C:\\projects\\squad-demo",
+  "request": "Research the question in inputs\\rfp.txt using inputs\\approved-capabilities.txt. Cite source identifiers and report gaps. Stop after research; do not change inputs or send anything externally.",
+  "project": "C:\\app-data\\bid-cases\\demo",
   "version": "v0.16.2",
-  "profile": "default"
+  "profile": "full"
 }</code></pre></div>
 <div class="code-block"><div class="code-heading">PowerShell · Run configuration</div><pre><code>dotnet run --project samples\HveSquad.AgentFramework.Sample -- --config run.json</code></pre></div>
 <p>CLI flags are <code>--run</code>, <code>--project</code>, <code>--version</code>, and <code>--profile</code>. <code>--config</code> takes one file and is not combined with these flags. Unknown JSON members and invalid or duplicate flags are rejected. Successful delivery, research, plan, or review returns exit code 0; other outcomes return 1, invalid arguments return 2, and cancellation returns 130.</p></section>
@@ -64,7 +68,7 @@ dotnet add C:\projects\SquadHost\SquadHost.csproj reference `
   C:\Solutions\hve-squad-maf\src\HveSquad.AgentFramework\HveSquad.AgentFramework.csproj
 dotnet add C:\projects\SquadHost\SquadHost.csproj package `
   Microsoft.Extensions.AI.OpenAI --version 10.8.3</code></pre></div></section>
-<section id="binding"><h2>04. Bind your IChatClient</h2><p>Add the following as <code>SquadEntry.cs</code> in the consumer application. This is the minimal library boundary: the application supplies the client and project, while human callbacks explicitly approve proposals and answer questions.</p>
+<section id="binding"><h2>04. Bind your IChatClient</h2><p>Add the following as <code>SquadEntry.cs</code> in the consumer application. The application supplies the client and the authorized case directory prepared above; console callbacks explicitly approve proposals and answer questions. This first request only researches capability evidence. For the complete app-owned draft job, including typed output selection and UI callbacks, use <a href="use-cases.html#rfp-code"><code>BidDraftService.DraftAsync</code></a>.</p>
 <div class="code-block"><div class="code-heading">C# · SquadEntry.cs</div><pre><code>using System.Text.Json;
 using HveSquad.AgentFramework.Runtime;
 using Microsoft.Extensions.AI;
@@ -73,14 +77,16 @@ internal static class SquadEntry
 {
     public static async Task&lt;SquadRunResult&gt; ResearchAsync(
         IChatClient chatClient,
-        string projectPath,
+        string caseDirectory,
         CancellationToken cancellationToken = default)
     {
         var options = new SquadRuntimeOptions
         {
-            ProjectPath = projectPath,
-            Profile = "default",
+            ProjectPath = caseDirectory,
+            Profile = "full",
             Version = "v0.16.2",
+            InputPaths = [@"inputs\rfp.txt", @"inputs\approved-capabilities.txt"],
+            Tools = [],
             ApprovalChannel = "in-chat",
             ApproveAsync = async (proposal, token) =&gt;
             {
@@ -100,11 +106,13 @@ internal static class SquadEntry
         using var squad = await SquadRuntime.CreateAsync(
             chatClient, options, cancellationToken: cancellationToken);
         return await squad.RunAsync(
-            "Research this project's error-handling approach. Do not implement changes.",
+            "Research the supplied RFP question using only approved capability evidence. " +
+            "Cite source identifiers and report gaps. Stop after research; " +
+            "do not change inputs or send anything externally.",
             cancellationToken);
     }
 }</code></pre></div>
-<p>If you already have a configured client, call <code>SquadEntry.ResearchAsync(chatClient, projectPath, cancellationToken)</code> from your application. The runtime does not dispose that client.</p>
+<p>If you already have a configured client, call <code>SquadEntry.ResearchAsync(chatClient, caseDirectory, cancellationToken)</code> from your application. The runtime does not dispose that client. <code>InputPaths</code> is not a read allowlist: native reads can access other contained files, so provision only authorized case material. <code>Tools = []</code> removes custom host capabilities, not native reading, artifact writing, or state persistence.</p><p>The <code>full</code> roster also has the <code>technical-writer</code> and intake seats needed by the later delivery example. Research-only does not run intake. A delivery/plan request with these inputs does, and the released PRD Quality Reviewer may not fit arbitrary RFP material; handle an explicit blocker rather than promise generic document validation.</p>
 <h3>Standalone provider binding</h3><p>For the new console project above, replace <code>Program.cs</code> with this complete example. It reads an already provisioned environment and contains no credential literals.</p>
 <div class="code-block"><div class="code-heading">C# · Program.cs</div><pre><code>using System.ClientModel;
 using Microsoft.Extensions.AI;
@@ -131,7 +139,7 @@ Console.CancelKeyPress += (_, e) =&gt;
 try
 {
     var result = await SquadEntry.ResearchAsync(
-        chatClient, @"C:\projects\squad-demo", cancellation.Token);
+        chatClient, @"C:\app-data\bid-cases\demo", cancellation.Token);
     Console.WriteLine($"{result.Status}: {result.ResponseText}");
     Console.WriteLine($"Verified dispatches: {result.Evidence.Count}");
 }
@@ -141,7 +149,7 @@ catch (OperationCanceledException)
 }</code></pre></div>
 <div class="code-block"><div class="code-heading">PowerShell · Run your application</div><pre><code>dotnet run --project C:\projects\SquadHost\SquadHost.csproj</code></pre></div>
 <p><code>ResearchCompleted</code> means research completed, not implementation. Handle <code>ApprovalRequired</code>, <code>InputRequired</code>, and partial evidence as first-class outcomes. Configuration, acquisition, state validation, and lock errors can throw before a run result exists. See <a href="usage.html#results">the complete result contract</a>.</p></section>
-<section id="package"><h2>Alternative: consume a local package</h2><p>Choose this instead of the project reference. Do not add both references to one consumer. These commands pack the current source and restore from the local feed plus NuGet.org for public dependencies.</p>
+<section id="package"><h2>Alternative: consume a local package</h2><p>Choose this instead of the project reference. Do not add both references to one consumer. These commands pack the current source and restore from the local feed plus NuGet.org for public dependencies. Packaging is not publishing; see the <a href="maintaining.html#publishing">maintainer publishing procedure</a>.</p>
 <div class="code-block"><div class="code-heading">PowerShell · Build, pack, and restore locally</div><pre><code>Set-Location C:\Solutions\hve-squad-maf
 dotnet build HveSquad.AgentFramework.slnx --configuration Release
 dotnet pack src\HveSquad.AgentFramework --configuration Release --output artifacts
@@ -154,15 +162,18 @@ dotnet add C:\projects\SquadPackageHost\SquadPackageHost.csproj package `
 dotnet restore C:\projects\SquadPackageHost\SquadPackageHost.csproj `
   --source C:\Solutions\hve-squad-maf\artifacts `
   --source https://api.nuget.org/v3/index.json</code></pre></div>
-<p>Add the same <code>SquadEntry.cs</code> and <code>Program.cs</code> from above, then run <code>dotnet run --project C:\projects\SquadPackageHost --no-restore</code>. For ongoing use, add the local feed to the consumer's <code>NuGet.Config</code>; preserve any organization package-source mapping policy. The generated package is <code>artifacts\HveSquad.AgentFramework.0.1.0-preview.1.nupkg</code>, not a published download.</p></section>
+<p>Add the same <code>SquadEntry.cs</code> and <code>Program.cs</code> from above, then run <code>dotnet run --project C:\projects\SquadPackageHost --no-restore</code>. For ongoing use, add the local feed to the consumer's <code>NuGet.Config</code>; preserve any organization package-source mapping policy. The generated package is <code>artifacts\HveSquad.AgentFramework.0.1.0-preview.1.nupkg</code>, not a published download.</p>
+<h3>After publication only</h3><p><strong>The following public-feed installation is NOT available until a maintainer publishes this version.</strong> It shows the intended consumer command, not a working public installation today.</p>
+<div class="code-block"><div class="code-heading">PowerShell · After maintainer publication, inside your app project</div><pre><code>dotnet add package HveSquad.AgentFramework --version 0.1.0-preview.1</code></pre></div></section>
 <section id="di"><h2>Use dependency injection in an existing host</h2><p><code>AddHveSquad</code> returns the service collection and registers a transient <code>SquadRuntimeFactory</code>. It is an async factory pattern, not a synchronously constructed runtime. Acquisition happens in <code>CreateAsync</code>.</p>
 <div class="code-block"><div class="code-heading">JSON · Application configuration section</div><pre><code>{
   "HveSquad": {
-    "ProjectPath": "C:\\projects\\squad-demo",
-    "Profile": "default",
+    "ProjectPath": "C:\\app-data\\bid-cases\\demo",
+    "Profile": "full",
     "Version": "v0.16.2",
     "Mode": "interactive",
     "Packs": [],
+    "InputPaths": ["inputs\\rfp.txt", "inputs\\approved-capabilities.txt"],
     "MaxDispatches": 32,
     "MaxModelCalls": 64,
     "RunTimeout": "00:30:00"
@@ -186,7 +197,7 @@ services.AddHveSquad(
 var factory = serviceProvider.GetRequiredService&lt;SquadRuntimeFactory&gt;();
 using var squad = await factory.CreateAsync(cancellationToken);
 var result = await squad.RunAsync(request, cancellationToken);</code></pre></div>
-<p>Each factory call creates an independently owned runtime. Do not overlap runtimes for the same project's state or dispose one while its run is active. Register tools, filters, logging, model selection, and callbacks in code, never in JSON. For a hosted UI, implement real human interaction rather than replacing the callback with unconditional approval.</p></section>
+<p>Each factory call creates an independently owned runtime. This configuration describes one demo case, not a multi-tenant directory shared by all requests. The app must authorize and select a separate persistent case directory for each business case, and its queue must enforce one active run per case. Do not dispose a runtime while its run is active.</p><p>Register tools, filters, logging, model selection, and callbacks in code, never in JSON. For a hosted UI, implement real human interaction rather than unconditional approval. Callbacks await answers during <code>RunTimeout</code>; there is no durable approval suspension or automatic background-job resume. The app owns document ingestion and rights, approval transport, job status, and secure result delivery. See <a href="use-cases.html#enterprise">the application boundary</a>.</p></section>
 <nav class="page-end" aria-label="Next pages"><a href="index.html">← Overview</a><a href="usage.html">Runtime reference →</a></nav>
 </main><footer><span>Community project. Not affiliated with or endorsed by Microsoft.</span><span><a href="https://github.com/Peter-N91/hve-squad-maf/blob/main/LICENSE">MIT license</a> · Static docs, no analytics</span></footer></div><p id="copy-status" class="sr-only" role="status" aria-live="polite"></p>
 </body></html>
