@@ -12,6 +12,11 @@ updates:
       prefix: chore(deps)
   - package-ecosystem: nuget
     directory: /
+    groups:
+      microsoft-extensions-configuration-di:
+        patterns:
+          - Microsoft.Extensions.Configuration*
+          - Microsoft.Extensions.DependencyInjection*
     schedule:
       interval: weekly
       day: monday

@@ -342,10 +342,12 @@ public sealed class RuntimeBoundaryTests
     {
         var path = Environment.GetEnvironmentVariable("HVE_SQUAD_RELEASE_ROOT");
         var version = Environment.GetEnvironmentVariable("HVE_SQUAD_RELEASE_VERSION");
+        using var releaseClient = ReleaseTestHttpClient.Create(
+            Environment.GetEnvironmentVariable("HVE_SQUAD_RELEASE_GITHUB_TOKEN"));
         SquadArtifactSource source;
         if (!string.IsNullOrWhiteSpace(version))
         {
-            source = new ReleaseArtifactSource(version == "latest" ? null : version);
+            source = new ReleaseArtifactSource(version == "latest" ? null : version, httpClient: releaseClient);
         }
         else if (!string.IsNullOrWhiteSpace(path))
         {

@@ -2,6 +2,7 @@ name: Release compatibility
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
   schedule:
@@ -103,6 +104,9 @@ jobs:
         env:
           HVE_SQUAD_RELEASE_VERSION: ${{ matrix.release }}
           HVE_SQUAD_REQUIRE_RELEASE_TESTS: 'true'
+          # Job-scoped read-only token: authenticate public release metadata requests
+          # instead of sharing the runner IP's small anonymous GitHub API quota.
+          HVE_SQUAD_RELEASE_GITHUB_TOKEN: ${{ github.token }}
         run: >-
           dotnet test tests/HveSquad.AgentFramework.Tests
           --configuration Release --nologo --verbosity normal
