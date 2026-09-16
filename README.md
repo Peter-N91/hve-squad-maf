@@ -348,6 +348,14 @@ uploads. Their report artifacts are retained regardless. See
 [workflow activation and maintenance](docs/maintaining.html#workflows) for permissions,
 feature availability, severity policy and publishing boundaries.
 
+Configuration and dependency-injection packages are grouped so library, sample and
+test projects update together rather than introducing NuGet downgrades. Release
+compatibility runs once per pull-request update (plus `main`, scheduled and manual
+runs). Its GitHub release metadata requests use the job's read-only token, passed
+explicitly by the test host; the library never discovers credentials automatically.
+Local release tests remain anonymous unless the host explicitly provides
+`HVE_SQUAD_RELEASE_GITHUB_TOKEN`. Never store a token in source or test fixtures.
+
 The lower-level `HveSquadBuilder`, `SquadAgentFactory` and `SquadWorkflowBuilder`
 remain available for artifact inspection and custom composition. They are not the
 governed runtime entry point; use `SquadRuntime` when you need its enforced gates.
