@@ -1,0 +1,65 @@
+HVE SQUAD MAF DOCUMENTATION
+
+The website uses the same Eleventy/Pagefind foundation as HVE Squad MCP.
+The .NET library and its package version are independent of the Node-based
+documentation tooling. No Node runtime is needed by library consumers.
+
+Build and preview
+  Node.js 22+ is required for documentation development.
+  npm ci
+  npm run docs:test
+  npm run docs:build
+  npm run docs:dev
+
+The development server uses port 4174. Pagefind indexes refresh during docs:build;
+restart docs:dev after content edits to refresh search. The Pages workflow builds
+and validates pull requests, but only publishes from main. Generated _site output
+is ignored by Git. Existing release compatibility checks still validate the
+original English source pages.
+
+Content and layout
+  docs/*.html             Authoritative, unchanged English technical content
+  docs/fr/*.html          Complete French equivalents
+  site/locales.json       Locale registry, direction, UI and navigation labels
+  site/pages.njk          Shared documentation shell
+  site/_includes/         Navigation, contents and footer extension
+  site/assets/site.css    Shared layout, fonts, themes and product tokens
+  site/assets/maf.css     Existing MAF diagrams and editorial components
+  scripts/docs-content.mjs Source extraction and stable heading identity
+  scripts/check-docs.mjs  Source/code/link/disclaimer preservation contracts
+
+The renderer extracts main content, page metadata, sidebar preview information
+and the original footer disclaimer. Source headers/styles/scripts are not shipped.
+Top-level inline tables of contents become the common contents navigation;
+nested explanatory navigation, diagrams, code captions and existing URLs/IDs stay.
+
+Brand
+  Frame gradient: #6366F1 -> #8B5CF6 -> #C084FC, 0/50/100%, 45 degrees
+  Navy badge field: #0F172A; agent nodes: #A5B4FC; execution hub: #C084FC
+  Functional light accent: #7C3AED; dark accent: #A78BFA
+  Manrope headings, Source Sans 3 prose/italics, JetBrains Mono code
+
+Fonts are self-hosted WOFF2 with their SIL Open Font License notices. The full
+gradient logo is for 48px and above; the favicon uses the optical small-size mark.
+Gradients belong in identity artwork, not running text or code.
+
+Additional languages
+1. Add the BCP 47 code, native name, one-segment prefix, ltr/rtl direction and
+   complete UI/page labels to site/locales.json.
+2. Translate all seven matching HTML sources under docs/<prefix>/.
+3. Preserve all structure, IDs, code, commands and external references. Translate
+   prose, titles, descriptions, accessible labels and surrounding UI text.
+4. Run docs:test and docs:build. Incomplete section coverage or changed technical
+   examples fail rather than silently falling back to English.
+
+English-derived heading anchors keep language switching on the same section.
+Existing section anchors are retained. Pagefind indexes each language separately.
+System/light/dark preferences are shared with sibling HVE docs via local storage.
+The existing scoutTheme=light or scoutTheme=dark query override is also preserved
+for embedded previews; it does not overwrite the saved preference by itself.
+
+Future reuse
+The footer-extra.njk extension point is intentionally empty. No newsletter form,
+analytics, subscription provider or personal-data collection is enabled here.
+Before adding a future newsletter, choose its provider, consent/privacy wording,
+validation and real success/error handling.

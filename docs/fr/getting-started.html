@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prise en main | HVE Squad pour Agent Framework</title>
+<meta name="description" content="Inspectez la version publiée, lisez les textes fictifs approuvés d’un appel d’offres et des capacités produit dans un répertoire de dossier, et intégrez la préversion non publiée à votre application .NET à l’aide d’une référence de projet ou d’un package local.">
+<script>(() => { const param = new URLSearchParams(window.location.search).get("scoutTheme"); const theme = param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); document.documentElement.setAttribute("data-theme", theme); })();</script>
+<style>
+:root { color-scheme: light; --cp-bg: #f7f4ef; --cp-bg-elevated: #fcfbf8; --cp-surface: #ffffff; --cp-surface-soft: #f5f5f5; --cp-border: #dedede; --cp-border-strong: #919191; --cp-text: #242424; --cp-text-muted: #5c5c5c; --cp-text-soft: #6f6f6f; --cp-accent: #b11f4b; --cp-accent-hover: #9a1a41; --cp-accent-soft: rgba(177, 31, 75, 0.08); --cp-accent-fg: #ffffff; --cp-success: #16a34a; --cp-danger: #dc2626; --cp-warning: #f59e0b; --cp-link: #0078d4; --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12); --cp-overlay: rgba(255, 255, 255, 0.8); --cp-panel: rgba(255, 255, 255, 0.86); --cp-panel-strong: rgba(255, 255, 255, 0.96); --cp-sheen: rgba(255, 255, 255, 0.55); --cp-highlight: rgba(177, 31, 75, 0.12); }
+html[data-theme="dark"] { color-scheme: dark; --cp-bg: #3d3b3a; --cp-bg-elevated: #343231; --cp-surface: #292929; --cp-surface-soft: #2e2e2e; --cp-border: #474747; --cp-border-strong: #5f5f5f; --cp-text: #dedede; --cp-text-muted: #919191; --cp-text-soft: #b0b0b0; --cp-accent: #fd8ea1; --cp-accent-hover: #fb7b91; --cp-accent-soft: rgba(253, 142, 161, 0.14); --cp-accent-fg: #1a1a1a; --cp-success: #4ade80; --cp-danger: #f87171; --cp-warning: #fbbf24; --cp-link: #4da6ff; --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32); --cp-overlay: rgba(41, 41, 41, 0.88); --cp-panel: rgba(41, 41, 41, 0.72); --cp-panel-strong: rgba(41, 41, 41, 0.96); --cp-sheen: rgba(255, 255, 255, 0.04); --cp-highlight: rgba(253, 142, 161, 0.12); }
+</style>
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="../assets/site.css"><script src="../assets/site.js" defer></script>
+</head><body>
+<a class="skip-link" href="#main">Aller au contenu</a>
+<aside class="sidebar"><a class="brand" href="index.html"><img src="../assets/logo.svg" alt="" width="48" height="48"><span>HVE Squad<small>pour Agent Framework</small></span></a><button class="mobile-toggle" type="button" aria-controls="site-navigation" aria-expanded="true" hidden>Menu</button><nav id="site-navigation" aria-label="Navigation principale"><p class="nav-label">Documentation</p><a href="index.html">Vue d’ensemble</a><a href="getting-started.html" aria-current="page">Prise en main</a><a href="usage.html">Référence du runtime</a><a href="hosting.html">Hébergement et exploitation</a><a href="use-cases.html">Cas d’usage</a><a href="federation.html">Fédération et périmètre</a><a href="maintaining.html">Contribution et maintenance</a></nav><div class="sidebar-bottom"><p>.NET 10 natif · MAF 1.17</p><p>0.1.0-preview.1 · Non publiée</p><a href="https://github.com/Peter-N91/hve-squad-maf">Voir le code source sur GitHub ↗</a></div></aside>
+<div class="shell"><header class="topbar"><span>Guide / Prise en main</span><div class="topbar-actions"><a href="https://github.com/Peter-N91/hve-squad-maf/tree/main/samples">Code source des exemples ↗</a><button class="theme-toggle" type="button" hidden>Thème</button></div></header>
+<main id="main"><p class="eyebrow">Des entrées approuvées du dossier à un premier tour d’exécution</p><h1>Fournissez un modèle.<br>Commencez par un dossier métier.</h1><p class="lede">Commencez par une inspection sans identifiants d’authentification. Utilisez ensuite les textes fictifs d’un appel d’offres et des capacités produit pour une demande de recherche en lecture seule. Il s’agit d’un contrôle d’intégration limité, première étape vers un <a href="use-cases.html#rfp">atelier de réponse aux appels d’offres dans votre application</a>, et non d’un workflow d’assistant de programmation.</p>
+<div class="callout"><p><strong>Le package n’est pas sur NuGet.org.</strong> Le package <code>HveSquad.AgentFramework</code> en version <code>0.1.0-preview.1</code> est une préversion non publiée. Utilisez la méthode par référence de projet ci-dessous ou créez un package pour un flux local. Aucun service MCP distinct n’est nécessaire. Les mainteneurs suivent les <a href="maintaining.html#publishing">instructions de publication du package</a> avant toute annonce d’installation depuis un flux public.</p></div>
+<nav class="toc" aria-label="Sur cette page"><p>Sur cette page</p><ul><li><a href="#prerequisites">Prérequis</a></li><li><a href="#inspect">Inspection</a></li><li><a href="#sample">Exécuter l’exemple</a></li><li><a href="#reference">Référence de projet</a></li><li><a href="#binding">Raccordement d’IChatClient</a></li><li><a href="#package">Package local</a></li><li><a href="#di">Injection de dépendances</a></li></ul></nav>
+<section id="prerequisites"><h2>Ce dont vous avez besoin</h2><div class="table-wrap"><table><thead><tr><th scope="col">Dépendance</th><th scope="col">Quand et pourquoi</th></tr></thead><tbody>
+<tr><td>SDK .NET 10</td><td>Compiler et exécuter la bibliothèque et l’exemple. L’intégration utilise Microsoft.Agents.AI 1.17.0 et Microsoft.Extensions.AI 10.8.3.</td></tr>
+<tr><td>Git + CLI APM</td><td>Disponibles dans PATH pour la première acquisition d’une version publiée. L’intégration continue de compatibilité teste APM 0.18.0. Installez-le en suivant les <a href="https://github.com/microsoft/apm">instructions officielles d’APM</a>.</td></tr>
+<tr><td>Accès à GitHub et aux dépendances</td><td>Résoudre une version publiée et installer son graphe complet de dépendances aux versions figées. Un clone des sources ne constitue pas, à lui seul, l’arborescence des compétences installées.</td></tr>
+<tr><td>Un répertoire dédié au dossier</td><td>Un répertoire existant accessible en écriture pour les textes d’entrée approuvés, les artefacts de sortie et l’état natif. <code>ProjectPath</code> est son nom dans l’API ; un dossier métier ne nécessite ni copie de travail du code ni dépôt Git. Utilisez un nouveau répertoire isolé, sans état de squad Copilot existant.</td></tr>
+<tr><td>Un raccordement à un modèle</td><td>Seule l’exécution réelle nécessite IChatClient et un modèle adapté. L’exemple utilise l’adaptateur OpenAI officiel. Un modèle local compatible peut convenir si votre fournisseur prend en charge le comportement requis pour les appels d’outils.</td></tr>
+</tbody></table></div><p>Les commandes ci-dessous utilisent PowerShell et des chemins Windows. Remplacez <code>C:\Solutions</code>, <code>C:\projects</code> et <code>C:\app-data</code> par vos propres emplacements autorisés. La copie de travail des sources de l’intégration et le répertoire du dossier métier sont deux choses distinctes : Git/APM acquièrent les artefacts publiés ; le répertoire du dossier conserve le travail de l’application.</p></section>
+<section id="inspect"><h2>01. Inspecter une version publiée</h2><p>Clonez le dépôt de l’intégration si vous ne l’avez pas encore, puis compilez-le. L’inspection n’effectue aucun appel payant à un modèle, mais les commandes relatives aux versions publiées nécessitent un accès réseau et APM.</p>
+<div class="code-block"><div class="code-heading">PowerShell · Cloner et vérifier les outils</div><pre><code>New-Item -ItemType Directory -Force C:\Solutions | Out-Null
+Set-Location C:\Solutions
+git clone https://github.com/Peter-N91/hve-squad-maf.git
+Set-Location C:\Solutions\hve-squad-maf
+dotnet --version
+git --version
+apm --version
+dotnet build HveSquad.AgentFramework.slnx
+
+dotnet run --project samples\HveSquad.AgentFramework.Sample -- --release v0.16.2
+dotnet run --project samples\HveSquad.AgentFramework.Sample -- --latest</code></pre></div>
+<p>Vous devez obtenir le tag de version, le commit, le nombre d’artefacts, les profils et packs disponibles, ainsi qu’une description du workflow par étapes. Pour <code>v0.16.2</code>, le commit testé est <code>a941195c36dfb6181453f51ec4638b085ca3b3ad</code>. Les avertissements concernant les délégués externes à activer explicitement ne signifient pas que ces capacités sont installées.</p>
+<p>Sans argument, l’inspecteur remonte l’arborescence à la recherche d’artefacts de projet installés. Les arguments positionnels de répertoire permettent d’inspecter des racines d’artefacts explicites. Aucune de ces deux méthodes ne correspond à l’acquisition de version par défaut du runtime en exécution réelle.</p></section>
+<section id="sample"><h2>02. Exécuter l’exemple console existant</h2><p>Définissez <code>OPENAI_API_KEY</code> et <code>OPENAI_MODEL</code> dans l’environnement du processus à l’aide de votre gestionnaire de secrets ou d’une configuration locale sécurisée. Ne placez pas d’identifiants d’authentification dans les sources, l’historique des commandes ou le JSON d’exécution. L’exemple exige les deux variables.</p><p><code>OPENAI_ENDPOINT</code> est facultatif et doit être un URI HTTP ou HTTPS absolu. Utilisez HTTPS pour les fournisseurs distants ; HTTP en clair ne convient qu’à un point de terminaison local explicitement approuvé. Les fournisseurs compatibles OpenAI, y compris un point de terminaison Azure OpenAI v1 correctement configuré, doivent prendre en charge le modèle sélectionné et les appels d’outils.</p>
+<div class="code-block"><div class="code-heading">PowerShell · Entrées textuelles fictives et demande de recherche en exécution réelle</div><pre><code>Set-Location C:\Solutions\hve-squad-maf
+New-Item -ItemType Directory -Force C:\app-data\bid-cases\demo\inputs | Out-Null
+Set-Content -LiteralPath C:\app-data\bid-cases\demo\inputs\rfp.txt -Encoding utf8 `
+  -Value "RFP-01 (fictional): Which input formats does the knowledge-search product support?"
+Set-Content -LiteralPath C:\app-data\bid-cases\demo\inputs\approved-capabilities.txt -Encoding utf8 `
+  -Value "CAP-01 (fictional approved evidence): Knowledge search accepts plain text. No other formats are evidenced."
+
+dotnet run --project samples\HveSquad.AgentFramework.Sample -- `
+  --run "Research the question in inputs\rfp.txt using inputs\approved-capabilities.txt. Cite source identifiers and report gaps. Stop after research; do not change inputs or send anything externally." `
+  --project C:\app-data\bid-cases\demo `
+  --version v0.16.2 `
+  --profile full</code></pre></div>
+<p>Ces fichiers de test ne contiennent aucune donnée réelle de client ou de produit. Utilisez un nouveau répertoire de démonstration ; les commandes remplacent les deux fichiers nommés. Examinez les propositions complètes d’initialisation et de routage, y compris le périmètre limité à la recherche. Ne saisissez <code>yes</code> que si vous approuvez la proposition effectivement affichée. Répondez aux éventuelles questions ou arrêtez avec Ctrl+C. Une exécution ciblée sur la recherche écrit des éléments probants de recherche, et non une réponse finalisée à l’appel d’offres.</p>
+<div class="callout"><p><strong>Ce que l’exemple peut réellement faire :</strong> lire les fichiers contenus dans le répertoire du dossier et écrire des artefacts méthodologiques au périmètre délimité. Il enregistre également un outil <code>write_project_file</code> limité à ce répertoire pour le rôle <code>developer</code>, après approbation explicite ; cette démonstration facultative d’écriture de code source n’est nécessaire ni pour cette demande ni pour la finalité métier de l’application. Il ne dispose d’aucun exécuteur de shell, de compilation, de tests, de recherche web ou de déploiement. Le raccordement à la bibliothèque ci-dessous n’enregistre aucun outil de l’hôte.</p></div>
+<h3>Alternative par fichier de configuration</h3><p>Enregistrez ce contenu dans <code>run.json</code> dans le dépôt de l’intégration. Il s’agit des champs de la CLI de l’exemple, et non du schéma complet de configuration du runtime.</p>
+<div class="code-block"><div class="code-heading">JSON · run.json</div><pre><code>{
+  "request": "Research the question in inputs\\rfp.txt using inputs\\approved-capabilities.txt. Cite source identifiers and report gaps. Stop after research; do not change inputs or send anything externally.",
+  "project": "C:\\app-data\\bid-cases\\demo",
+  "version": "v0.16.2",
+  "profile": "full"
+}</code></pre></div>
+<div class="code-block"><div class="code-heading">PowerShell · Exécuter la configuration</div><pre><code>dotnet run --project samples\HveSquad.AgentFramework.Sample -- --config run.json</code></pre></div>
+<p>Les options de la CLI sont <code>--run</code>, <code>--project</code>, <code>--version</code> et <code>--profile</code>. <code>--config</code> accepte un seul fichier et ne se combine pas avec ces options. Les membres JSON inconnus et les options non valides ou répétées sont rejetés. Une livraison, une recherche, une planification ou une revue réussie renvoie le code de sortie 0 ; les autres résultats renvoient 1, les arguments non valides renvoient 2 et l’annulation renvoie 130.</p></section>
+<section id="reference"><h2>03. Ajouter une référence de projet</h2><p>C’est la méthode d’intégration la plus simple avant publication. Elle compile la bibliothèque directement depuis votre copie de travail. L’adaptateur OpenAI ci-dessous n’est nécessaire que pour l’exemple autonome de fournisseur, pas pour les appelants qui disposent déjà d’un IChatClient.</p>
+<div class="code-block"><div class="code-heading">PowerShell · Créer une application consommatrice</div><pre><code>dotnet new console --framework net10.0 --output C:\projects\SquadHost
+dotnet add C:\projects\SquadHost\SquadHost.csproj reference `
+  C:\Solutions\hve-squad-maf\src\HveSquad.AgentFramework\HveSquad.AgentFramework.csproj
+dotnet add C:\projects\SquadHost\SquadHost.csproj package `
+  Microsoft.Extensions.AI.OpenAI --version 10.8.3</code></pre></div></section>
+<section id="binding"><h2>04. Raccorder votre IChatClient</h2><p>Ajoutez le contenu suivant dans <code>SquadEntry.cs</code> dans l’application consommatrice. L’application fournit le client et le répertoire autorisé du dossier préparé ci-dessus ; les callbacks console permettent d’approuver explicitement les propositions et de répondre aux questions. Cette première demande recherche uniquement les éléments probants relatifs aux capacités. Pour le traitement complet de rédaction géré par l’application, incluant la sélection typée de la sortie et les callbacks d’interface utilisateur, utilisez <a href="use-cases.html#rfp-code"><code>BidDraftService.DraftAsync</code></a>.</p>
+<div class="code-block"><div class="code-heading">C# · SquadEntry.cs</div><pre><code>using System.Text.Json;
+using HveSquad.AgentFramework.Runtime;
+using Microsoft.Extensions.AI;
+
+internal static class SquadEntry
+{
+    public static async Task&lt;SquadRunResult&gt; ResearchAsync(
+        IChatClient chatClient,
+        string caseDirectory,
+        CancellationToken cancellationToken = default)
+    {
+        var options = new SquadRuntimeOptions
+        {
+            ProjectPath = caseDirectory,
+            Profile = "full",
+            Version = "v0.16.2",
+            InputPaths = [@"inputs\rfp.txt", @"inputs\approved-capabilities.txt"],
+            Tools = [],
+            ApprovalChannel = "in-chat",
+            ApproveAsync = async (proposal, token) =&gt;
+            {
+                Console.WriteLine(JsonSerializer.Serialize(proposal));
+                Console.Write("Approve this exact proposal? Type yes: ");
+                return string.Equals(
+                    await Console.In.ReadLineAsync(token),
+                    "yes", StringComparison.OrdinalIgnoreCase);
+            },
+            AskAsync = async (question, token) =&gt;
+            {
+                Console.WriteLine($"{question.Role}: {question.Question}");
+                return await Console.In.ReadLineAsync(token);
+            }
+        };
+
+        using var squad = await SquadRuntime.CreateAsync(
+            chatClient, options, cancellationToken: cancellationToken);
+        return await squad.RunAsync(
+            "Research the supplied RFP question using only approved capability evidence. " +
+            "Cite source identifiers and report gaps. Stop after research; " +
+            "do not change inputs or send anything externally.",
+            cancellationToken);
+    }
+}</code></pre></div>
+<p>Si vous disposez déjà d’un client configuré, appelez <code>SquadEntry.ResearchAsync(chatClient, caseDirectory, cancellationToken)</code> depuis votre application. Le runtime ne libère pas ce client. <code>InputPaths</code> n’est pas une liste d’autorisation de lecture : les lectures natives peuvent accéder à d’autres fichiers contenus dans le répertoire ; n’y placez donc que les documents autorisés pour le dossier. <code>Tools = []</code> supprime les capacités personnalisées de l’hôte, mais pas la lecture native, l’écriture d’artefacts ni la persistance de l’état.</p><p>La liste de rôles <code>full</code> comprend également les rôles <code>technical-writer</code> et de validation des entrées nécessaires à l’exemple de livraison présenté plus loin. Une recherche seule ne déclenche pas la validation des entrées. Une demande de livraison ou de planification avec ces entrées la déclenche, et le PRD Quality Reviewer publié peut ne pas convenir à des documents d’appel d’offres quelconques ; gérez un blocage explicite plutôt que de promettre une validation générique des documents.</p>
+<h3>Raccordement autonome à un fournisseur</h3><p>Pour le nouveau projet console ci-dessus, remplacez <code>Program.cs</code> par cet exemple complet. Il lit un environnement déjà configuré et ne contient aucun identifiant d’authentification en dur.</p>
+<div class="code-block"><div class="code-heading">C# · Program.cs</div><pre><code>using System.ClientModel;
+using Microsoft.Extensions.AI;
+using OpenAI;
+
+var key = Environment.GetEnvironmentVariable("OPENAI_API_KEY")
+    ?? throw new InvalidOperationException("Provision OPENAI_API_KEY securely.");
+var model = Environment.GetEnvironmentVariable("OPENAI_MODEL")
+    ?? throw new InvalidOperationException("Set OPENAI_MODEL for your provider.");
+var clientOptions = new OpenAIClientOptions();
+var endpoint = Environment.GetEnvironmentVariable("OPENAI_ENDPOINT");
+if (!string.IsNullOrWhiteSpace(endpoint))
+    clientOptions.Endpoint = new Uri(endpoint, UriKind.Absolute);
+
+var provider = new OpenAIClient(new ApiKeyCredential(key), clientOptions);
+using IChatClient chatClient = provider.GetChatClient(model).AsIChatClient();
+using var cancellation = new CancellationTokenSource();
+Console.CancelKeyPress += (_, e) =&gt;
+{
+    e.Cancel = true;
+    cancellation.Cancel();
+};
+
+try
+{
+    var result = await SquadEntry.ResearchAsync(
+        chatClient, @"C:\app-data\bid-cases\demo", cancellation.Token);
+    Console.WriteLine($"{result.Status}: {result.ResponseText}");
+    Console.WriteLine($"Verified dispatches: {result.Evidence.Count}");
+}
+catch (OperationCanceledException)
+{
+    Console.WriteLine("Cancelled. No completion is claimed.");
+}</code></pre></div>
+<div class="code-block"><div class="code-heading">PowerShell · Exécuter votre application</div><pre><code>dotnet run --project C:\projects\SquadHost\SquadHost.csproj</code></pre></div>
+<p><code>ResearchCompleted</code> signifie que la recherche est terminée, pas l’implémentation. Traitez <code>ApprovalRequired</code>, <code>InputRequired</code> et les éléments probants partiels comme des résultats à part entière. Les erreurs de configuration, d’acquisition, de validation de l’état et de verrouillage peuvent lever des exceptions avant qu’un résultat d’exécution n’existe. Consultez <a href="usage.html#results">le contrat complet des résultats</a>.</p></section>
+<section id="package"><h2>Alternative : utiliser un package local</h2><p>Choisissez cette méthode à la place de la référence de projet. N’ajoutez pas les deux références à une même application consommatrice. Ces commandes créent un package à partir des sources actuelles et restaurent les dépendances depuis le flux local et NuGet.org pour les dépendances publiques. Créer un package ne revient pas à le publier ; consultez la <a href="maintaining.html#publishing">procédure de publication destinée aux mainteneurs</a>.</p>
+<div class="code-block"><div class="code-heading">PowerShell · Compiler, créer le package et restaurer localement</div><pre><code>Set-Location C:\Solutions\hve-squad-maf
+dotnet build HveSquad.AgentFramework.slnx --configuration Release
+dotnet pack src\HveSquad.AgentFramework --configuration Release --output artifacts
+
+dotnet new console --framework net10.0 --output C:\projects\SquadPackageHost
+dotnet add C:\projects\SquadPackageHost\SquadPackageHost.csproj package `
+  HveSquad.AgentFramework --version 0.1.0-preview.1 --no-restore
+dotnet add C:\projects\SquadPackageHost\SquadPackageHost.csproj package `
+  Microsoft.Extensions.AI.OpenAI --version 10.8.3 --no-restore
+dotnet restore C:\projects\SquadPackageHost\SquadPackageHost.csproj `
+  --source C:\Solutions\hve-squad-maf\artifacts `
+  --source https://api.nuget.org/v3/index.json</code></pre></div>
+<p>Ajoutez les mêmes fichiers <code>SquadEntry.cs</code> et <code>Program.cs</code> que ci-dessus, puis exécutez <code>dotnet run --project C:\projects\SquadPackageHost --no-restore</code>. Pour une utilisation régulière, ajoutez le flux local au <code>NuGet.Config</code> de l’application consommatrice ; conservez toute politique de mappage des sources de packages de votre organisation. Le package généré est <code>artifacts\HveSquad.AgentFramework.0.1.0-preview.1.nupkg</code>, et non un téléchargement publié.</p>
+<h3>Uniquement après publication</h3><p><strong>L’installation depuis un flux public ci-dessous n’est PAS disponible tant qu’un mainteneur n’a pas publié cette version.</strong> Elle montre la commande prévue pour les consommateurs du package, et non une installation publique fonctionnelle à ce jour.</p>
+<div class="code-block"><div class="code-heading">PowerShell · Après publication par un mainteneur, dans votre projet d’application</div><pre><code>dotnet add package HveSquad.AgentFramework --version 0.1.0-preview.1</code></pre></div></section>
+<section id="di"><h2>Utiliser l’injection de dépendances dans un hôte existant</h2><p><code>AddHveSquad</code> renvoie la collection de services et enregistre une <code>SquadRuntimeFactory</code> avec une durée de vie transitoire. Il s’agit d’un modèle de fabrique asynchrone, et non d’un runtime construit de manière synchrone. L’acquisition a lieu dans <code>CreateAsync</code>.</p>
+<div class="code-block"><div class="code-heading">JSON · Section de configuration de l’application</div><pre><code>{
+  "HveSquad": {
+    "ProjectPath": "C:\\app-data\\bid-cases\\demo",
+    "Profile": "full",
+    "Version": "v0.16.2",
+    "Mode": "interactive",
+    "Packs": [],
+    "InputPaths": ["inputs\\rfp.txt", "inputs\\approved-capabilities.txt"],
+    "MaxDispatches": 32,
+    "MaxModelCalls": 64,
+    "RunTimeout": "00:30:00"
+  }
+}</code></pre></div>
+<p>Le code suivant se place au point de composition de votre hôte existant. <code>services</code>, <code>configuration</code>, <code>chatClient</code> et <code>serviceProvider</code> sont fournis par cette application. Les callbacks de l’hôte utilisent les mêmes signatures que dans l’exemple d’utilisation directe.</p>
+<div class="code-block"><div class="code-heading">C# · Composition de l’hôte et gestion du cycle de vie du runtime</div><pre><code>using HveSquad.AgentFramework.Hosting;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
+
+services.AddSingleton&lt;IChatClient&gt;(chatClient);
+services.AddHveSquad(
+    configuration.GetSection("HveSquad"),
+    configureHost: options =&gt;
+    {
+        options.ApproveAsync = ApproveInYourApplicationAsync;
+        options.AskAsync = AskInYourApplicationAsync;
+    });
+
+// Later, resolve from your application's built service provider.
+var factory = serviceProvider.GetRequiredService&lt;SquadRuntimeFactory&gt;();
+using var squad = await factory.CreateAsync(cancellationToken);
+var result = await squad.RunAsync(request, cancellationToken);</code></pre></div>
+<p>Chaque appel à la fabrique crée un runtime dont le cycle de vie est géré indépendamment. Cette configuration décrit un dossier de démonstration, et non un répertoire multilocataire partagé par toutes les requêtes. L’application doit autoriser et sélectionner un répertoire persistant distinct pour chaque dossier métier, et sa file d’attente doit imposer une seule exécution active par dossier. Ne libérez pas un runtime tant que son exécution est active.</p><p>Enregistrez les outils, les filtres, la journalisation, la sélection du modèle et les callbacks dans le code, jamais dans le JSON. Pour une interface utilisateur hébergée, implémentez une véritable interaction humaine plutôt qu’une approbation inconditionnelle. Les callbacks attendent les réponses dans la limite de <code>RunTimeout</code> ; il n’existe ni suspension durable pour approbation ni reprise automatique d’un traitement en arrière-plan. L’application prend en charge l’ingestion des documents et les droits associés, le transport des approbations, l’état des traitements et la remise sécurisée des résultats. Consultez <a href="use-cases.html#enterprise">les limites de responsabilité de l’application</a>.</p></section>
+<nav class="page-end" aria-label="Pages suivantes"><a href="index.html">← Vue d’ensemble</a><a href="usage.html">Référence du runtime →</a></nav>
+</main><footer><span>Projet communautaire. Ni affilié à Microsoft ni approuvé par Microsoft.</span><span><a href="https://github.com/Peter-N91/hve-squad-maf/blob/main/LICENSE">Licence MIT</a> · Documentation statique, sans mesure d’audience</span></footer></div><p id="copy-status" class="sr-only" role="status" aria-live="polite"></p>
+</body></html>
