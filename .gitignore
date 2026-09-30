@@ -7,3 +7,5 @@ obj/
 /security-reports/
 TestResults/
 .env
+node_modules/
+_site/
