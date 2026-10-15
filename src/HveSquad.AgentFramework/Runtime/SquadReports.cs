@@ -247,6 +247,8 @@ internal static class ReportPaths
         var root = OutputRoot(files, configuration);
         var relative = requested ?? Path.Combine("docs", stem + "." + format);
         EnsureLocal(relative);
+        relative = relative.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar);
+        EnsureLocal(relative);
         if (relative.Split(['/', '\\']).Any(part => part is "." or ".." || part.EndsWith(' ') || part.EndsWith('.')) ||
             !Path.IsPathFullyQualified(relative) && relative.Contains(':', StringComparison.Ordinal))
         {

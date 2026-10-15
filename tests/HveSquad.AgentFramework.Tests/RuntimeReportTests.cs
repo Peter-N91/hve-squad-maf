@@ -785,8 +785,11 @@ public sealed class RuntimeReportTests
     [InlineData("\\\\server\\share\\report.html")]
     [InlineData("..\\report.html")]
     [InlineData(".git\\report.html")]
+    [InlineData(".git/report.html")]
     [InlineData(".github\\report.html")]
+    [InlineData(".github/report.html")]
     [InlineData(".copilot-tracking\\squad\\history\\report.html")]
+    [InlineData(".copilot-tracking/squad/history/report.html")]
     public async Task GivenRemoteTraversalOrProtectedTarget_WhenReporting_RejectsBeforeStateOrOutputWork(string output)
     {
         using var host = new RuntimeTestHost();
@@ -795,6 +798,23 @@ public sealed class RuntimeReportTests
             new SquadReports(host.Project, Configuration()).GovernanceAsync(new(OutputPath: output)));
 
         Assert.Empty(Directory.EnumerateFileSystemEntries(host.Project));
+    }
+
+    [Theory]
+    [InlineData("docs\\portable\\report.md")]
+    [InlineData("docs/portable/report.md")]
+    public async Task GivenEitherPortableSeparator_WhenExporting_UsesTheSameAuthorizedLocalPath(string output)
+    {
+        using var host = new RuntimeTestHost();
+        _ = await Seed(host);
+        var original = Manifest(host);
+        var reports = new SquadReports(host.Project, Configuration());
+
+        var result = await reports.DocumentAsync(new("Current roster", OutputPath: output));
+
+        Assert.Equal(Path.Combine(host.Project, "docs", "portable", "report.md"), result.Path);
+        Assert.True(File.Exists(result.Path));
+        Unchanged(host, original);
     }
 
     [Fact]

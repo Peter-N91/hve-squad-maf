@@ -703,10 +703,16 @@ public sealed class RuntimeEvidenceTests
         QueueCouncil(host);
         using var runtime = await host.CreateAsync();
         SquadRunResult result;
-        using (var locked = new FileStream(Path.Combine(host.Project, host.Options.SquadRoot, "consumption.md"),
-            FileMode.Open, FileAccess.Read, FileShare.Read))
+        var ledger = Path.Combine(host.Project, host.Options.SquadRoot, "consumption.md");
+        File.Delete(ledger);
+        Directory.CreateDirectory(ledger);
+        try
         {
             result = await runtime.RunAsync("Run the bounded independent council despite ledger-only contention.");
+        }
+        finally
+        {
+            Directory.Delete(ledger);
         }
 
         Assert.True(result.Status == SquadRunStatus.Completed, result.ResponseText + "\n" + string.Join("\n", host.Log.Messages));

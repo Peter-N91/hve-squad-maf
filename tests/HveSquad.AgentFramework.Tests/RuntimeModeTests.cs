@@ -503,6 +503,25 @@ public sealed class RuntimeModeTests
         host.Options.MaxConcurrentDispatches = 4;
         Success(host);
         var observations = new List<(decimal? Actual, decimal Expected)>();
+        using var researchSampled = new ManualResetEventSlim();
+        using var planSampled = new ManualResetEventSlim();
+        var steps = host.Client.Steps.ToArray();
+        host.Client.Steps.Clear();
+        foreach (var step in steps)
+        {
+            host.Client.Steps.Enqueue((messages, options) =>
+            {
+                if (options?.Instructions?.Contains("Synthetic agent for lead.", StringComparison.Ordinal) == true)
+                {
+                    Assert.True(researchSampled.Wait(TimeSpan.FromSeconds(30)), "Research admission was not sampled before the lead response.");
+                }
+                else if (options?.Instructions?.Contains("Synthetic agent for architect.", StringComparison.Ordinal) == true)
+                {
+                    Assert.True(planSampled.Wait(TimeSpan.FromSeconds(30)), "Plan admission was not sampled before the council response.");
+                }
+                return step(messages, options);
+            });
+        }
         host.Log.Observer = id =>
         {
             if (id.Name == "PipelinedHandoff")
@@ -520,6 +539,7 @@ public sealed class RuntimeModeTests
                     .Sum(charge => charge.CostUsd!.Value);
                 observations.Add((preflights.Last().EvaluatedSpendUsd,
                     decimal.Round(realized + raw * 3.0m, 4)));
+                (source.Stage == "research" ? researchSampled : planSampled).Set();
             }
         };
         using var runtime = await host.CreateAsync();

@@ -359,7 +359,19 @@ internal sealed class RuntimeTestHost : IDisposable
         Log.Dispose();
         if (Directory.Exists(Root))
         {
-            Directory.Delete(Root, recursive: true);
+            for (var attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    Directory.Delete(Root, recursive: true);
+                    break;
+                }
+                catch (IOException exception) when (OperatingSystem.IsWindows() &&
+                    (exception.HResult & 0xffff) == 32 && attempt < 20)
+                {
+                    Thread.Sleep(50);
+                }
+            }
         }
     }
 
