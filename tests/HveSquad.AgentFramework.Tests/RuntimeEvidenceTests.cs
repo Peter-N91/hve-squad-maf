@@ -304,18 +304,22 @@ public sealed class RuntimeEvidenceTests
         Assert.DoesNotContain(state.ModelCalls, call => call.Agent == "Squad Scribe");
     }
 
-    [Fact]
-    public async Task GivenConcurrentSeat_WhenReadingAnotherOwnersAllocation_BlocksWithoutProduction()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public async Task GivenConcurrentSeat_WhenReadingAnotherOwnersAllocation_BlocksWithoutProduction(int attempt)
     {
         using var host = new RuntimeTestHost();
         using var council = new ConcurrentCouncil(host, 2, attackSibling: true);
         QueueCouncil(host);
         using var runtime = await host.CreateAsync();
 
-        var result = await runtime.RunAsync("Write a council-reviewed document.");
+        var result = await runtime.RunAsync(FormattableString.Invariant($"Write a council-reviewed document, attempt {attempt}."));
 
-        Assert.Equal(SquadRunStatus.Blocked, result.Status);
+        Assert.True(result.Status == SquadRunStatus.Blocked, result.ResponseText);
         Assert.Contains("another active dispatch", result.ResponseText, StringComparison.Ordinal);
+        Assert.Equal(1, council.SiblingReadAttempts);
         Assert.DoesNotContain(result.Evidence, e => e.Stage == "produce");
         Assert.Equal(0, host.Writes);
     }
@@ -750,7 +754,9 @@ public sealed class RuntimeEvidenceTests
         private readonly ConcurrentBag<DelayedClient> _clients = [];
         private readonly Probe _probe;
         private readonly TaskCompletionSource _pendingReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _siblingReadFinished = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private int _architectSelections;
+        private int _siblingReadAttempts;
 
         internal ConcurrentCouncil(RuntimeTestHost host, int requiredConcurrency, bool attackSibling = false,
             bool suspendArchitect = false, bool waitForPeerHandoffs = false)
@@ -786,6 +792,7 @@ public sealed class RuntimeEvidenceTests
                 var worker = charter.Name == "Shared Worker";
                 var marker = worker ? "PRIVATE_WORKER_" + role.Role.ToUpperInvariant() : "Council " + role.Role;
                 Func<CancellationToken, Task>? wait = null;
+                Func<ChatOptions?, CancellationToken, Task>? beforeFirstResponse = null;
                 if (!worker && role.Role == "architect" && suspendArchitect)
                 {
                     scripted.Call("ask_host", new() { ["question"] = "A human must supply the council input." });
@@ -798,17 +805,30 @@ public sealed class RuntimeEvidenceTests
                 {
                     wait = token => _pendingReady.Task.WaitAsync(TimeSpan.FromSeconds(15), token);
                 }
+                if (!worker && attackSibling && role.Role == "architect")
+                {
+                    wait = token => _siblingReadFinished.Task.WaitAsync(TimeSpan.FromSeconds(15), token);
+                }
                 if (!worker && attackSibling && role.Role == "security")
                 {
-                    scripted.Steps.Enqueue((_, _) =>
+                    beforeFirstResponse = async (options, token) =>
                     {
-                        using var state = JsonDocument.Parse(File.ReadAllText(StatePath(host)));
-                        var peer = state.RootElement.GetProperty("Checkpoint").GetProperty("DispatchStack").EnumerateArray()
-                            .Single(d => d.GetProperty("Role").GetString() == "architect" &&
-                                d.GetProperty("ParentDispatchId").ValueKind == JsonValueKind.Null);
-                        var path = peer.GetProperty("Allocations")[0].GetProperty("Path").GetString();
-                        return RuntimeTestHost.Function("project_read", new() { ["path"] = path });
-                    });
+                        try
+                        {
+                            using var state = JsonDocument.Parse(File.ReadAllText(StatePath(host)));
+                            var peer = state.RootElement.GetProperty("Checkpoint").GetProperty("DispatchStack").EnumerateArray()
+                                .Single(d => d.GetProperty("Role").GetString() == "architect" &&
+                                    d.GetProperty("ParentDispatchId").ValueKind == JsonValueKind.Null);
+                            var path = peer.GetProperty("Allocations")[0].GetProperty("Path").GetString();
+                            var read = Assert.Single(options!.Tools!.OfType<AIFunction>(), tool => tool.Name == "project_read");
+                            Interlocked.Increment(ref _siblingReadAttempts);
+                            _ = await read.InvokeAsync(new AIFunctionArguments { ["path"] = path }, token);
+                        }
+                        finally
+                        {
+                            _siblingReadFinished.TrySetResult();
+                        }
+                    };
                 }
                 if (!worker && role.Role is "architect" or "security")
                 {
@@ -836,7 +856,7 @@ public sealed class RuntimeEvidenceTests
                 }
                 scripted.Call(role.Role == "cost-manager" ? "complete_return" : "complete_stage", arguments);
                 scripted.Text(marker + " finished.");
-                var client = new DelayedClient(scripted, _probe, role.Role == "architect" ? 50 : 5, wait);
+                var client = new DelayedClient(scripted, _probe, role.Role == "architect" ? 50 : 5, wait, beforeFirstResponse);
                 _clients.Add(client);
                 return new(client, "fixture-" + role.Role);
             };
@@ -844,6 +864,7 @@ public sealed class RuntimeEvidenceTests
 
         internal int Peak => _probe.Peak;
         internal int Calls => _clients.Sum(client => client.Calls);
+        internal int SiblingReadAttempts => Volatile.Read(ref _siblingReadAttempts);
 
         public void Dispose()
         {
@@ -887,7 +908,8 @@ public sealed class RuntimeEvidenceTests
 
     private sealed class DelayedClient(
         ScriptedRuntimeChatClient inner, Probe probe, int delay,
-        Func<CancellationToken, Task>? wait = null) : DelegatingChatClient(inner)
+        Func<CancellationToken, Task>? wait = null,
+        Func<ChatOptions?, CancellationToken, Task>? beforeFirstResponse = null) : DelegatingChatClient(inner)
     {
         private int _firstCall;
         internal int Calls => inner.Calls.Count;
@@ -898,11 +920,16 @@ public sealed class RuntimeEvidenceTests
             try
             {
                 await probe.EnterAsync(cancellationToken);
-                if (Interlocked.Exchange(ref _firstCall, 1) == 0 && wait is not null)
+                var first = Interlocked.Exchange(ref _firstCall, 1) == 0;
+                if (first && wait is not null)
                 {
                     await wait(cancellationToken);
                 }
                 await Task.Delay(delay, cancellationToken);
+                if (first && beforeFirstResponse is not null)
+                {
+                    await beforeFirstResponse(options, cancellationToken);
+                }
                 var response = await base.GetResponseAsync(messages, options, cancellationToken);
                 response.ModelId = options?.ModelId;
                 response.Usage = new() { InputTokenCount = 10, OutputTokenCount = 5 };
