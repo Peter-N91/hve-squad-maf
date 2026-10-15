@@ -7,6 +7,22 @@ public class ArtifactSourceTests : IDisposable
 {
     private readonly string _temp = Path.Combine(Path.GetTempPath(), "hve-squad-maf-tests", Guid.NewGuid().ToString("n"));
 
+    [Fact]
+    public void GivenHostReleaseMetadataCredential_WhenConfiguringApm_LeavesItOutOfTheProcessEnvironment()
+    {
+        var request = new ApmInstallRequest("owner/package#" + new string('a', 40),
+            "all", _temp, TimeSpan.FromSeconds(30));
+        var start = new ProcessStartInfo();
+        start.Environment["HVE_SQUAD_RELEASE_GITHUB_TOKEN"] = "synthetic-metadata-only-not-a-credential";
+        start.Environment["HVE_SQUAD_PUBLIC_FIXTURE_VALUE"] = "retained";
+
+        ApmArtifactSource.ConfigureInstallProcess(start, request);
+
+        Assert.False(start.Environment.ContainsKey("HVE_SQUAD_RELEASE_GITHUB_TOKEN"));
+        Assert.Equal("retained", start.Environment["HVE_SQUAD_PUBLIC_FIXTURE_VALUE"]);
+        Assert.Equal(["install", request.PackageSpec, "--target", "all"], start.ArgumentList);
+    }
+
     private string CreateInstalledProject()
     {
         var project = Path.Combine(_temp, "project");
@@ -396,7 +412,7 @@ public class ArtifactSourceTests : IDisposable
         var first = new DirectoryArtifactSource(["/one"], "/one/team.md");
         var second = new DirectoryArtifactSource(["/two"], "/two/team.md");
 
-        var resolved = await new CompositeArtifactSource(first, second) .ResolveAsync();
+        var resolved = await new CompositeArtifactSource(first, second).ResolveAsync();
 
         Assert.Equal(["/one", "/two"], resolved.Roots);
         Assert.Equal("/one/team.md", resolved.RosterPath);

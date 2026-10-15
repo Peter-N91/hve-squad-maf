@@ -22,6 +22,12 @@ manifest. It does not redistribute upstream agent charters, customer state or
 credentials. Released artifacts are acquired with Git/APM or supplied by an
 explicit host-managed complete artifact source.
 
+The standalone package-verification host explicitly configures an optional
+`HVE_SQUAD_RELEASE_GITHUB_TOKEN` on its release-metadata HTTP client. This avoids
+shared anonymous runner quotas; the library does not discover credentials
+automatically, and that metadata-only token is removed from the APM process
+environment. It grants no model, tool, case, learning or repository-write rights.
+
 ## Consumer-owned host
 
 Register your existing `Microsoft.Extensions.AI.IChatClient`, then call

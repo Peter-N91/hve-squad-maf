@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -60,7 +61,13 @@ static async Task VerifyAsync(string project, string expectedVersion)
     using var client = new ResearchClient();
     var services = new ServiceCollection();
     services.AddSingleton<IChatClient>(client);
-    var source = new ReleaseArtifactSource();
+    using var metadataClient = new HttpClient();
+    var metadataToken = Environment.GetEnvironmentVariable("HVE_SQUAD_RELEASE_GITHUB_TOKEN");
+    if (!string.IsNullOrWhiteSpace(metadataToken))
+    {
+        metadataClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", metadataToken);
+    }
+    var source = new ReleaseArtifactSource(httpClient: metadataClient);
     services.AddHveSquad(configuration, options =>
     {
         options.HumanApprovalChannel = channel;
@@ -151,6 +158,7 @@ static async Task VerifyAsync(string project, string expectedVersion)
         learningCandidates = discovery.Candidates.Count,
         federation = "actual member execution",
         externalMutations = 0,
+        metadataAuthentication = metadataClient.DefaultRequestHeaders.Authorization is null ? "anonymous" : "host-supplied bearer",
         quality = "scripted mechanical verification, not model or product quality",
     }, new JsonSerializerOptions { WriteIndented = true }));
     Console.WriteLine("Package consumer passed: original authenticated resume, real MAF outputs, federation, local formats, memory and human-only discovery.");

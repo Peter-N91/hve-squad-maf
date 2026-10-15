@@ -17,6 +17,8 @@
 .NOTES
     Requires .NET 10, PowerShell 7.4+, NuGet connectivity and APM for public release
     acquisition. No model credentials or remote write permissions are used.
+    The consumer explicitly configures an optional host-owned
+    HVE_SQUAD_RELEASE_GITHUB_TOKEN for release metadata; it is not sent to APM.
 #>
 [CmdletBinding()]
 param(

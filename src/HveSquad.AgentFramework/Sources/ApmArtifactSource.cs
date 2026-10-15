@@ -281,10 +281,7 @@ public sealed partial class ApmArtifactSource : SquadArtifactSource
             CreateNoWindow = true,
         };
 
-        startInfo.ArgumentList.Add("install");
-        startInfo.ArgumentList.Add(request.PackageSpec);
-        startInfo.ArgumentList.Add("--target");
-        startInfo.ArgumentList.Add(request.Target);
+        ConfigureInstallProcess(startInfo, request);
 
         using var process = new Process { StartInfo = startInfo };
         try
@@ -326,6 +323,15 @@ public sealed partial class ApmArtifactSource : SquadArtifactSource
                 $"apm install '{request.PackageSpec}' failed with exit code {process.ExitCode}. " +
                 $"{FirstDiagnostic(error) ?? FirstDiagnostic(output) ?? "No diagnostic output."}");
         }
+    }
+
+    internal static void ConfigureInstallProcess(ProcessStartInfo startInfo, ApmInstallRequest request)
+    {
+        startInfo.Environment.Remove("HVE_SQUAD_RELEASE_GITHUB_TOKEN");
+        startInfo.ArgumentList.Add("install");
+        startInfo.ArgumentList.Add(request.PackageSpec);
+        startInfo.ArgumentList.Add("--target");
+        startInfo.ArgumentList.Add(request.Target);
     }
 
     private static async Task<string> CaptureOutputAsync(StreamReader reader)
