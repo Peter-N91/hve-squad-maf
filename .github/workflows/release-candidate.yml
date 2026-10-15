@@ -1,0 +1,159 @@
+name: Candidate release checks
+
+on:
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+  push:
+    branches: [validation/industryiq-release-readiness]
+
+permissions: {}
+
+concurrency:
+  group: hve-squad-candidate-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  candidate:
+    name: candidate-${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+          - os: windows-latest
+            platform: windows
+    env:
+      EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+      CANDIDATE_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
+    steps:
+      - name: Require a structural exact head before checkout
+        shell: pwsh
+        run: |
+          if ($env:EXPECTED_HEAD -cnotmatch '\A[a-f0-9]{40}\z') { throw 'Candidate checks require an exact head SHA, not a branch/ref.' }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install the tested artifact package manager
+        run: python -m pip install --disable-pip-version-check apm-cli==0.18.0
+      - name: Build the exact checked-out head
+        run: dotnet build HveSquad.AgentFramework.slnx --configuration Release --nologo --verbosity minimal
+      - name: Select the exact proposed or supported validation target
+        shell: pwsh
+        run: |
+          $Tool = [IO.Path]::Combine('tools', 'HveSquad.ReleaseSync')
+          $Target = [IO.Path]::Combine('artifacts', 'release-sync', 'target.json')
+          $Arguments = @('target', '--output', $Target)
+          if ($env:CANDIDATE_BRANCH.StartsWith('automation/hve-squad/', [StringComparison]::Ordinal)) { $Arguments += '--require-candidate' }
+          dotnet run --project $Tool --configuration Release --no-build -- @Arguments
+          if ($LASTEXITCODE -ne 0) { throw 'The exact candidate target is missing or invalid.' }
+          $Release = Get-Content -LiteralPath $Target -Raw | ConvertFrom-Json
+          if ($Release.tag -cnotmatch '\Av(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\z' -or $Release.commitSha -cnotmatch '\A[a-f0-9]{40}\z') { throw 'Invalid structural candidate identity.' }
+          "HVE_SQUAD_RELEASE_VERSION=$($Release.tag)" >> $env:GITHUB_ENV
+          "HVE_SQUAD_RELEASE_COMMIT=$($Release.commitSha)" >> $env:GITHUB_ENV
+      - name: Run candidate release contracts
+        shell: pwsh
+        env:
+          HVE_SQUAD_REQUIRE_RELEASE_TESTS: 'true'
+          HVE_SQUAD_RELEASE_GITHUB_TOKEN: ${{ github.token }}
+          HVE_SQUAD_OBSERVATION_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          $Project = [IO.Path]::Combine('tests', 'HveSquad.AgentFramework.Tests', 'HveSquad.AgentFramework.Tests.csproj')
+          $Results = [IO.Path]::Combine($PWD.Path, 'artifacts', 'release-sync')
+          $env:HVE_SQUAD_OBSERVATION_OUTPUT = [IO.Path]::Combine($Results, 'observations')
+          $env:HVE_SQUAD_TEST_POWERSHELL = (Get-Command pwsh).Source
+          dotnet test $Project --configuration Release --no-build --no-restore --results-directory $Results --logger 'trx;LogFileName=candidate.trx' --logger 'console;verbosity=minimal' -- xUnit.MaxParallelThreads=4
+          if ($LASTEXITCODE -ne 0) { throw 'Full native regressions and required actual candidate release cases failed; no empty or skipped pass is accepted.' }
+      - name: Preserve exact legacy behavior
+        shell: pwsh
+        env:
+          HVE_SQUAD_RELEASE_VERSION: 'v0.16.2'
+          HVE_SQUAD_RELEASE_COMMIT: 'a941195c36dfb6181453f51ec4638b085ca3b3ad'
+          HVE_SQUAD_REQUIRE_RELEASE_TESTS: 'true'
+          HVE_SQUAD_RELEASE_GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          $Project = [IO.Path]::Combine('tests', 'HveSquad.AgentFramework.Tests', 'HveSquad.AgentFramework.Tests.csproj')
+          $Results = [IO.Path]::Combine($PWD.Path, 'artifacts', 'release-sync')
+          $env:HVE_SQUAD_OBSERVATION_OUTPUT = ''
+          $env:HVE_SQUAD_TEST_POWERSHELL = (Get-Command pwsh).Source
+          dotnet test $Project --configuration Release --no-build --no-restore --filter 'Category=ReleaseCompatibility' --results-directory $Results --logger 'trx;LogFileName=legacy.trx' --logger 'console;verbosity=minimal' -- xUnit.MaxParallelThreads=4
+          if ($LASTEXITCODE -ne 0) { throw 'Required exact legacy cases failed.' }
+          [xml]$Report = Get-Content -LiteralPath ([IO.Path]::Combine($Results, 'legacy.trx')) -Raw
+          $Counters = $Report.TestRun.ResultSummary.Counters
+          if ([int]$Counters.total -lt 13 -or $Counters.total -ne $Counters.executed -or $Counters.total -ne $Counters.passed) {
+            throw 'Legacy acceptance requires all thirteen actual cases, without skips or empty reports.'
+          }
+      - name: Execute the isolated actual-package consumer
+        shell: pwsh
+        env:
+          HVE_SQUAD_RELEASE_GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          $Work = Join-Path $env:RUNNER_TEMP ("hve-squad-package-" + $env:GITHUB_RUN_ID + "-" + $env:GITHUB_RUN_ATTEMPT)
+          $Script = [IO.Path]::Combine($PWD.Path, 'scripts', 'Test-PackageConsumer.ps1')
+          & (Get-Command pwsh).Source -NoProfile -File $Script -WorkRoot $Work
+          if ($LASTEXITCODE -ne 0) { throw 'Actual package inventory, byte-identical repack or standalone native execution failed.' }
+          $Results = [IO.Path]::Combine($PWD.Path, 'artifacts', 'release-sync')
+          Copy-Item -LiteralPath (Join-Path $Work 'package-evidence.json') -Destination (Join-Path $Results 'package-evidence.json')
+          Copy-Item -LiteralPath ([IO.Path]::Combine($Work, 'case', 'verification.json')) -Destination (Join-Path $Results 'package-consumer.json')
+      - name: Verify every individual native assertion
+        shell: pwsh
+        run: |
+          $Tool = [IO.Path]::Combine('tools', 'HveSquad.ReleaseSync')
+          $Results = [IO.Path]::Combine('artifacts', 'release-sync')
+          dotnet run --project $Tool --configuration Release --no-build -- verify-conformance --head $env:EXPECTED_HEAD --trx ([IO.Path]::Combine($Results, 'candidate.trx')) --package-proof ([IO.Path]::Combine($Results, 'package-evidence.json')) --output ([IO.Path]::Combine($Results, 'conformance.json'))
+          if ($LASTEXITCODE -ne 0) { throw 'Individual assertion methods/cases, actual observations, package/test DLL identity or package evidence are incomplete.' }
+      - name: Set up documentation tooling
+        if: matrix.platform == 'linux'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Validate and build both documentation languages
+        if: matrix.platform == 'linux'
+        shell: pwsh
+        run: |
+          npm ci
+          if ($LASTEXITCODE -ne 0) { throw 'Documentation dependency restore failed.' }
+          npm run docs:test
+          if ($LASTEXITCODE -ne 0) { throw 'Bilingual documentation contracts failed.' }
+          npm run docs:build
+          if ($LASTEXITCODE -ne 0) { throw 'Localized documentation and search build failed.' }
+      - name: Verify candidate evidence and reviewed contracts
+        shell: pwsh
+        env:
+          HVE_SQUAD_RELEASE_GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          $Tool = [IO.Path]::Combine('tools', 'HveSquad.ReleaseSync')
+          $Results = [IO.Path]::Combine('artifacts', 'release-sync')
+          $Trx = [IO.Path]::Combine($Results, 'candidate.trx')
+          $Report = [IO.Path]::Combine($Results, 'verification.json')
+          $Package = [IO.Path]::Combine($Results, 'package-evidence.json')
+          dotnet run --project $Tool --configuration Release --no-build -- verify --head $env:EXPECTED_HEAD --trx $Trx --package-proof $Package --output $Report
+          if ($LASTEXITCODE -ne 0) { throw 'Unknown/unverified contracts or incomplete/wrong-head evidence block promotion. Review the report; semantic scores remain advisory.' }
+      - name: Record truthful candidate status
+        if: always()
+        shell: pwsh
+        run: |
+          "## Exact candidate-head validation" >> $env:GITHUB_STEP_SUMMARY
+          "Checkout: $env:EXPECTED_HEAD. Only executed successful required tests and reviewed contract evidence can permit a mechanical pass." >> $env:GITHUB_STEP_SUMMARY
+          "Unbaselined observations and not-judged answers are advisory, not fabricated failures or compatibility passes. Human review/merge remains required; this job has no write/publish/deploy rights." >> $env:GITHUB_STEP_SUMMARY
+      - name: Preserve candidate evidence even when blocked
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: candidate-evidence-${{ matrix.platform }}
+          path: artifacts/release-sync
+          if-no-files-found: warn
+          retention-days: 30

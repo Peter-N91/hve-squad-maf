@@ -7,7 +7,12 @@
     <Version>0.1.0-preview.1</Version>
     <Description>Run HVE Squad artifact-defined agents with Microsoft Agent Framework.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Authors>Peter-N91</Authors>
+    <PackageProjectUrl>https://github.com/Peter-N91/hve-squad-maf</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Peter-N91/hve-squad-maf</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <!-- Fixed ZIP metadata epoch, not the release date or native evidence clock. -->
+    <DeterministicTimestamp Condition="'$(DeterministicTimestamp)' == ''">946684800</DeterministicTimestamp>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
@@ -23,7 +28,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <InternalsVisibleTo Include="HveSquad.AgentFramework.Tests" />
+    <InternalsVisibleTo Include="HveSquad.ReleaseSync" />
+    <None Update="README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+    <EmbeddedResource Include="..\..\compatibility\hve-squad-release.json"
+                      LogicalName="HveSquad.AgentFramework.hve-squad-release.json" />
+    <None Include="..\..\compatibility\hve-squad-release.json" Pack="true" PackagePath="compatibility\" />
   </ItemGroup>
 
 </Project>

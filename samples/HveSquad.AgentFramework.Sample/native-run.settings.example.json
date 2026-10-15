@@ -1,0 +1,17 @@
+{
+  "request": "Research the approved local inputs. Report evidence and gaps. Stop after research; do not send anything externally.",
+  "project": "C:\\app-data\\bid-cases\\demo",
+  "version": "v0.18.1",
+  "profile": "full",
+  "squadRoot": ".copilot-tracking/squad",
+  "maxConcurrentDispatches": 4,
+  "namingPolicy": "skip",
+  "discovery": "skip",
+  "topicId": "approved-local-research",
+  "mode": "interactive",
+  "modelRouting": { "mode": "off", "models": {} },
+  "costCeiling": "unset",
+  "durableApprovals": true,
+  "humanResponseTimeout": "1.00:00:00",
+  "notifications": { "approvalChannel": "in-chat", "enabled": false }
+}

@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\HveSquad.AgentFramework\HveSquad.AgentFramework.csproj" />
     <ProjectReference Include="..\..\samples\HveSquad.AgentFramework.Sample\HveSquad.AgentFramework.Sample.csproj" />
+    <ProjectReference Include="..\..\tools\HveSquad.ReleaseSync\HveSquad.ReleaseSync.csproj" />
   </ItemGroup>
 
   <ItemGroup>

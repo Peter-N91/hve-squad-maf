@@ -1,0 +1,391 @@
+[
+  {
+    "scenarioId": "native-default-autonomous",
+    "releaseTag": "v0.18.1",
+    "releaseCommitSha": "4c1f140f12f17abd3f200baa3afcb6d4c84bb6da",
+    "attempt": 1,
+    "roles": [
+      "architect",
+      "developer",
+      "lead",
+      "researcher",
+      "tester"
+    ],
+    "deliverables": [
+      {
+        "root": ".",
+        "extension": ".txt"
+      },
+      {
+        "root": ".copilot-tracking/changes",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/plans",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/research",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/reviews",
+        "extension": ".md"
+      },
+      {
+        "root": "docs/architecture",
+        "extension": ".md"
+      }
+    ],
+    "gates": [
+      {
+        "kind": "Autonomous Revalidation",
+        "verdict": "Go"
+      },
+      {
+        "kind": "Autonomous Validation Outcome",
+        "verdict": "converged"
+      },
+      {
+        "kind": "Council Verdict",
+        "verdict": "Go"
+      },
+      {
+        "kind": "Mode Outcome",
+        "verdict": "recorded"
+      }
+    ]
+  },
+  {
+    "scenarioId": "native-default-autopilot",
+    "releaseTag": "v0.18.1",
+    "releaseCommitSha": "4c1f140f12f17abd3f200baa3afcb6d4c84bb6da",
+    "attempt": 1,
+    "roles": [
+      "architect",
+      "developer",
+      "lead",
+      "researcher",
+      "tester"
+    ],
+    "deliverables": [
+      {
+        "root": ".",
+        "extension": ".txt"
+      },
+      {
+        "root": ".copilot-tracking/changes",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/plans",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/research",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/reviews",
+        "extension": ".md"
+      },
+      {
+        "root": "docs/architecture",
+        "extension": ".md"
+      }
+    ],
+    "gates": [
+      {
+        "kind": "Autonomous Revalidation",
+        "verdict": "Go"
+      },
+      {
+        "kind": "Autonomous Validation Outcome",
+        "verdict": "converged"
+      },
+      {
+        "kind": "Council Verdict",
+        "verdict": "Go"
+      },
+      {
+        "kind": "FinalOutcome",
+        "verdict": "approved"
+      },
+      {
+        "kind": "Mode Outcome",
+        "verdict": "recorded"
+      }
+    ]
+  },
+  {
+    "scenarioId": "native-default-interactive",
+    "releaseTag": "v0.18.1",
+    "releaseCommitSha": "4c1f140f12f17abd3f200baa3afcb6d4c84bb6da",
+    "attempt": 1,
+    "roles": [
+      "developer",
+      "lead",
+      "researcher",
+      "tester"
+    ],
+    "deliverables": [
+      {
+        "root": ".",
+        "extension": ".txt"
+      },
+      {
+        "root": ".copilot-tracking/changes",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/plans",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/research",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/reviews",
+        "extension": ".md"
+      }
+    ],
+    "gates": [
+      {
+        "kind": "ConsequentialTool",
+        "verdict": "approved"
+      },
+      {
+        "kind": "Implementation",
+        "verdict": "approved"
+      },
+      {
+        "kind": "Plan",
+        "verdict": "approved"
+      },
+      {
+        "kind": "Routing",
+        "verdict": "approved"
+      }
+    ]
+  },
+  {
+    "scenarioId": "native-full-autonomous",
+    "releaseTag": "v0.18.1",
+    "releaseCommitSha": "4c1f140f12f17abd3f200baa3afcb6d4c84bb6da",
+    "attempt": 1,
+    "roles": [
+      "architect",
+      "cost-manager",
+      "developer",
+      "intake-validator",
+      "lead",
+      "product-owner",
+      "researcher",
+      "security",
+      "tester"
+    ],
+    "deliverables": [
+      {
+        "root": ".",
+        "extension": ".txt"
+      },
+      {
+        "root": ".copilot-tracking/changes",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/plans",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/research",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/reviews",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/security-plans",
+        "extension": ".md"
+      },
+      {
+        "root": "docs/architecture",
+        "extension": ".md"
+      }
+    ],
+    "gates": [
+      {
+        "kind": "Autonomous Revalidation",
+        "verdict": "Go"
+      },
+      {
+        "kind": "Autonomous Validation Outcome",
+        "verdict": "converged"
+      },
+      {
+        "kind": "Council Verdict",
+        "verdict": "Go"
+      },
+      {
+        "kind": "Intake Readiness Verdict",
+        "verdict": "Ready"
+      },
+      {
+        "kind": "Mode Outcome",
+        "verdict": "recorded"
+      }
+    ]
+  },
+  {
+    "scenarioId": "native-full-autopilot",
+    "releaseTag": "v0.18.1",
+    "releaseCommitSha": "4c1f140f12f17abd3f200baa3afcb6d4c84bb6da",
+    "attempt": 1,
+    "roles": [
+      "architect",
+      "cost-manager",
+      "developer",
+      "intake-validator",
+      "lead",
+      "product-owner",
+      "researcher",
+      "security",
+      "tester"
+    ],
+    "deliverables": [
+      {
+        "root": ".",
+        "extension": ".txt"
+      },
+      {
+        "root": ".copilot-tracking/changes",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/plans",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/research",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/reviews",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/security-plans",
+        "extension": ".md"
+      },
+      {
+        "root": "docs/architecture",
+        "extension": ".md"
+      }
+    ],
+    "gates": [
+      {
+        "kind": "Autonomous Revalidation",
+        "verdict": "Go"
+      },
+      {
+        "kind": "Autonomous Validation Outcome",
+        "verdict": "converged"
+      },
+      {
+        "kind": "Council Verdict",
+        "verdict": "Go"
+      },
+      {
+        "kind": "FinalOutcome",
+        "verdict": "approved"
+      },
+      {
+        "kind": "Intake Readiness Verdict",
+        "verdict": "Ready"
+      },
+      {
+        "kind": "Mode Outcome",
+        "verdict": "recorded"
+      }
+    ]
+  },
+  {
+    "scenarioId": "native-full-interactive",
+    "releaseTag": "v0.18.1",
+    "releaseCommitSha": "4c1f140f12f17abd3f200baa3afcb6d4c84bb6da",
+    "attempt": 1,
+    "roles": [
+      "architect",
+      "cost-manager",
+      "developer",
+      "intake-validator",
+      "lead",
+      "product-owner",
+      "researcher",
+      "security",
+      "tester"
+    ],
+    "deliverables": [
+      {
+        "root": ".",
+        "extension": ".txt"
+      },
+      {
+        "root": ".copilot-tracking/changes",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/plans",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/research",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/reviews",
+        "extension": ".md"
+      },
+      {
+        "root": ".copilot-tracking/security-plans",
+        "extension": ".md"
+      },
+      {
+        "root": "docs/architecture",
+        "extension": ".md"
+      }
+    ],
+    "gates": [
+      {
+        "kind": "ConsequentialTool",
+        "verdict": "approved"
+      },
+      {
+        "kind": "Council",
+        "verdict": "approved"
+      },
+      {
+        "kind": "Council Verdict",
+        "verdict": "Go"
+      },
+      {
+        "kind": "Implementation",
+        "verdict": "approved"
+      },
+      {
+        "kind": "Intake Readiness Verdict",
+        "verdict": "Ready"
+      },
+      {
+        "kind": "Plan",
+        "verdict": "approved"
+      },
+      {
+        "kind": "Routing",
+        "verdict": "approved"
+      }
+    ]
+  }
+]

@@ -22,6 +22,15 @@ public sealed record SquadRole(
     string? DefaultTier,
     string? DeliverableRoot);
 
+/// <summary>A canonical registered external resource; registration never installs or authorizes it.</summary>
+public sealed record SquadRegisteredResource(
+    string Role, string Tier, string Resource, string Kind, string Origin,
+    string InstallOrEntry, string License, string Prerequisites, string Dispatchability, string VerifiedOn);
+
+/// <summary>A canonical intent rule. Roles are identifiers, never concrete agent names.</summary>
+public sealed record SquadRoutingRule(IReadOnlyList<string> Patterns, IReadOnlyList<string> Roles,
+    IReadOnlyList<string> OptionalRoles, string AutonomyTier, bool ParallelEligible);
+
 /// <summary>
 /// Parses the released cast, profile, and pack tables without embedding a release-specific map.
 /// </summary>
@@ -34,12 +43,16 @@ public sealed class SquadCatalog
         SquadArtifacts artifacts,
         IReadOnlyList<SquadProfile> profiles,
         IReadOnlyList<SquadPack> packs,
-        IReadOnlyList<SquadRole> roles)
+        IReadOnlyList<SquadRole> roles,
+        IReadOnlyList<SquadRegisteredResource> registeredResources,
+        IReadOnlyList<SquadRoutingRule> routingRules)
     {
         _artifacts = artifacts;
         Profiles = profiles;
         Packs = packs;
         Roles = roles;
+        RegisteredResources = registeredResources;
+        RoutingRules = routingRules;
     }
 
     public IReadOnlyList<SquadProfile> Profiles { get; }
@@ -48,7 +61,12 @@ public sealed class SquadCatalog
 
     public IReadOnlyList<SquadRole> Roles { get; }
 
-    /// <summary>Loads the canonical tables from the uniquely selected roster instruction.</summary>
+    /// <summary>Gets declared prerequisites and acquisition instructions, not inferred permissions.</summary>
+    public IReadOnlyList<SquadRegisteredResource> RegisteredResources { get; }
+    /// <summary>Declared intent rules, including rules whose required role is not yet selected.</summary>
+    public IReadOnlyList<SquadRoutingRule> RoutingRules { get; }
+
+    /// <summary>Loads the canonical split catalog, or the explicitly recognized legacy inline table.</summary>
     public static SquadCatalog Load(SquadArtifacts artifacts)
     {
         ArgumentNullException.ThrowIfNull(artifacts);
@@ -67,8 +85,9 @@ public sealed class SquadCatalog
         }
 
         var tables = MarkdownTables.Parse(matches[0].Body);
+        var castTables = CastTables(artifacts, tables);
         var roleRows = RequireTable(
-            tables,
+            castTables,
             "Cast Catalog",
             ["Role", "Primary Agent", "Alternate Agents", "Selection Cue"]);
         var profileRows = RequireTable(
@@ -82,7 +101,7 @@ public sealed class SquadCatalog
 
         var roleBuilders = ParseRoles(roleRows);
         ApplyDeliverableRoots(tables, roleBuilders);
-        ApplyRoutingMetadata(artifacts, roleBuilders);
+        var routingRules = ApplyRoutingMetadata(artifacts, roleBuilders);
         ApplySeedMetadata(artifacts, roleBuilders);
 
         var roles = roleBuilders.Values
@@ -92,7 +111,75 @@ public sealed class SquadCatalog
         var profiles = ParseProfiles(profileRows, knownRoles);
         var packs = ParsePacks(packRows, knownRoles);
 
-        return new SquadCatalog(artifacts, profiles, packs, roles);
+        return new SquadCatalog(artifacts, profiles, packs, roles, ParseRegisteredResources(castTables, knownRoles), routingRules);
+    }
+
+    private static System.Collections.ObjectModel.ReadOnlyCollection<SquadRegisteredResource> ParseRegisteredResources(
+        IReadOnlyList<MarkdownTable> tables, HashSet<string> knownRoles)
+    {
+        var matches = tables.Where(t => t.Heading.Equals("Registered External Cast", StringComparison.OrdinalIgnoreCase) &&
+            t.HasColumns(["Role", "Resource", "Resource Kind", "Origin", "Install or Entry", "License", "Prerequisites",
+                "Dispatchability Verified", "Verified On"])).ToArray();
+        if (matches.Length > 1)
+        {
+            throw new InvalidDataException("Multiple canonical Registered External Cast tables were found.");
+        }
+
+        if (matches.Length == 0)
+        {
+            return Array.AsReadOnly(Array.Empty<SquadRegisteredResource>());
+        }
+
+        var result = new List<SquadRegisteredResource>();
+        var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in matches[0].Rows)
+        {
+            string Required(string column) => RequiredCell(row, column, "Registered External Cast");
+            var role = Required("Role");
+            var kind = Required("Resource Kind");
+            var resource = Required("Resource");
+            var tier = matches[0].HasColumns(["Tier"]) ? Required("Tier") : "opt-in";
+            if (!knownRoles.Contains(role) || kind is not ("agent" or "skill" or "instruction" or "plugin") ||
+                tier is not ("bundled" or "opt-in") || !keys.Add(role + ":" + kind + ":" + resource))
+            {
+                throw new InvalidDataException($"Invalid or duplicate registered resource '{resource}' for role '{role}'.");
+            }
+
+            result.Add(new(role, tier, resource, kind, Required("Origin"), Required("Install or Entry"),
+                Required("License"), Required("Prerequisites"), Required("Dispatchability Verified"), Required("Verified On")));
+        }
+
+        return result.AsReadOnly();
+    }
+
+    private static IReadOnlyList<MarkdownTable> CastTables(
+        SquadArtifacts artifacts, IReadOnlyList<MarkdownTable> rosterTables)
+    {
+        var skills = artifacts.Skills.Where(s => s.Name.Equals("squad", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (skills.Length > 1)
+        {
+            throw new InvalidDataException("Multiple canonical 'squad' skills remain after artifact precedence.");
+        }
+
+        if (skills.Length == 1)
+        {
+            var files = new Runtime.ProjectFiles(skills[0].DirectoryPath, 200_000);
+            const string resource = "references/roster-catalog.md";
+            if (File.Exists(files.Resolve(resource)))
+            {
+                return MarkdownTables.Parse(files.Read(resource));
+            }
+        }
+
+        if (rosterTables.Any(t => t.Heading.Equals("Cast Catalog", StringComparison.OrdinalIgnoreCase)))
+        {
+            return rosterTables;
+        }
+
+        throw new InvalidDataException(
+            "The split cast catalog is missing canonical skill 'squad' resource " +
+            "'references/roster-catalog.md'. Reacquire the complete pinned artifact tree; " +
+            "profiles, packs and deliverable roots still come from 'squad-roster.instructions.md'.");
     }
 
     /// <summary>
@@ -132,11 +219,27 @@ public sealed class SquadCatalog
             }
         }
 
+        return ResolveRoles(roleNames);
+    }
+
+    /// <summary>Resolves an explicitly selected custom role subset from the canonical cast.</summary>
+    /// <param name="roleNames">Exact canonical role identifiers.</param>
+    /// <returns>Ordered canonical definitions, without installing or authorizing missing agents.</returns>
+    public IReadOnlyList<SquadRosterEntry> ResolveRoles(IEnumerable<string> roleNames)
+    {
+        ArgumentNullException.ThrowIfNull(roleNames);
+        var names = roleNames.ToArray();
+        if (names.Any(string.IsNullOrWhiteSpace) ||
+            names.Distinct(StringComparer.OrdinalIgnoreCase).Count() != names.Length)
+        {
+            throw new InvalidDataException("Custom role identifiers must be nonempty and unique.");
+        }
         return
         [
-            .. roleNames.Select(name =>
+            .. names.Select(name =>
             {
-                var role = Roles.Single(r => r.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+                var role = Roles.SingleOrDefault(r => r.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                    ?? throw new InvalidDataException($"Unknown custom cast role '{name}'; no invented role or substitute is allowed.");
                 if (string.IsNullOrWhiteSpace(role.PrimaryAgent))
                 {
                     throw new InvalidOperationException(
@@ -204,9 +307,18 @@ public sealed class SquadCatalog
                 a => a.Equals(alternateAgent, StringComparison.OrdinalIgnoreCase));
         }
 
-        var charter = _artifacts.FindCharter(agentName)
-            ?? throw new InvalidOperationException(
-                $"Role '{entry.Role}' resolves to agent '{agentName}', but that agent is not installed.");
+        var charter = _artifacts.FindCharter(agentName);
+        if (charter is null)
+        {
+            var registered = RegisteredResources.Where(r =>
+                r.Role.Equals(entry.Role, StringComparison.OrdinalIgnoreCase) && r.Kind == "agent").ToArray();
+            var guidance = registered.Length == 0
+                ? " Restore the complete pinned installation or explicitly register the required resource; no substitute is allowed."
+                : " Registered installation prerequisites:\n" + string.Join("\n", registered.Select(r =>
+                    $"{r.Resource}: {r.InstallOrEntry}; prerequisites: {r.Prerequisites}"));
+            throw new InvalidOperationException(
+                $"Role '{entry.Role}' resolves to agent '{agentName}', but that agent is not installed." + guidance);
+        }
 
         if (charter.DisableModelInvocation)
         {
@@ -240,15 +352,15 @@ public sealed class SquadCatalog
         {
             var name = RequiredCell(row, "Role", "Cast Catalog");
             if (!roles.TryAdd(name, new RoleBuilder
-                {
-                    Name = name,
-                    PrimaryAgent = SemanticCell(row, "Primary Agent"),
-                    AlternateAgents = SplitNames(SemanticCell(row, "Alternate Agents")),
-                    SelectionCue = SemanticCell(row, "Selection Cue"),
-                    Invocation = SemanticCell(row, "Invocation"),
-                    DefaultTier = SemanticCell(row, "Model Tier") ?? SemanticCell(row, "Default Tier"),
-                    DeliverableRoot = SemanticCell(row, "Deliverable Root"),
-                }))
+            {
+                Name = name,
+                PrimaryAgent = SemanticCell(row, "Primary Agent"),
+                AlternateAgents = SplitNames(SemanticCell(row, "Alternate Agents")),
+                SelectionCue = SemanticCell(row, "Selection Cue"),
+                Invocation = SemanticCell(row, "Invocation"),
+                DefaultTier = SemanticCell(row, "Model Tier") ?? SemanticCell(row, "Default Tier"),
+                DeliverableRoot = SemanticCell(row, "Deliverable Root"),
+            }))
             {
                 throw new InvalidDataException($"Cast Catalog defines role '{name}' more than once.");
             }
@@ -426,7 +538,7 @@ public sealed class SquadCatalog
         }
     }
 
-    private static void ApplyRoutingMetadata(
+    private static System.Collections.ObjectModel.ReadOnlyCollection<SquadRoutingRule> ApplyRoutingMetadata(
         SquadArtifacts artifacts,
         IReadOnlyDictionary<string, RoleBuilder> roles)
     {
@@ -443,7 +555,7 @@ public sealed class SquadCatalog
 
         if (instructions.Count == 0)
         {
-            return;
+            return Array.AsReadOnly(Array.Empty<SquadRoutingRule>());
         }
 
         var tables = MarkdownTables.Parse(instructions[0].Body)
@@ -458,9 +570,16 @@ public sealed class SquadCatalog
         }
 
         var tiers = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        var rules = new List<SquadRoutingRule>();
         foreach (var row in tables[0].Rows)
         {
             var autonomy = RequiredCell(row, "Autonomy Tier", "Default Routing Rules");
+            if (autonomy is not ("auto" or "confirm" or "escalate" or "auto-validated"))
+            {
+                throw new InvalidDataException("Default Routing Rules has an unknown autonomy tier.");
+            }
+            var ruleRoles = new List<string>();
+            var optionalRoles = new List<string>();
             foreach (var rawName in SplitNames(RequiredCell(row, "Role", "Default Routing Rules")))
             {
                 var roleName = rawName.Split('(', 2)[0].Trim();
@@ -477,6 +596,18 @@ public sealed class SquadCatalog
                 }
 
                 values.Add(autonomy);
+                ruleRoles.Add(roleName);
+                if (rawName.Contains("(optional)", StringComparison.OrdinalIgnoreCase))
+                {
+                    optionalRoles.Add(roleName);
+                }
+            }
+            var patterns = SemanticCell(row, "Pattern / Keyword");
+            if (patterns is not null)
+            {
+                rules.Add(new(patterns.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries),
+                    ruleRoles.AsReadOnly(), optionalRoles.AsReadOnly(), autonomy,
+                    SemanticCell(row, "Parallel-Eligible")?.Equals("yes", StringComparison.OrdinalIgnoreCase) == true));
             }
         }
 
@@ -495,6 +626,7 @@ public sealed class SquadCatalog
                         ? "fast"
                         : null;
         }
+        return rules.AsReadOnly();
     }
 
     private static string SafeChildPath(string root, string relativePath)

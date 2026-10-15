@@ -9,6 +9,9 @@ namespace HveSquad.AgentFramework.Tests;
 
 public sealed class RuntimeBoundaryTests
 {
+    private static readonly string[] IntakeStages = ["intake"];
+    private static readonly string[] ResearchAndPlanStages = ["research", "plan"];
+
     [Fact]
     public async Task SkillResourceToolReadsActualDeployedFile()
     {
@@ -64,7 +67,7 @@ public sealed class RuntimeBoundaryTests
         using var runtime = await host.CreateAsync();
         var result = await runtime.RunAsync("Implement a change.");
 
-        Assert.Equal(SquadRunStatus.Blocked, result.Status);
+        Assert.True(result.Status == SquadRunStatus.Blocked, result.ResponseText + "\n" + string.Join("\n", host.Log.Messages));
         Assert.Contains("not registered", result.ResponseText, StringComparison.Ordinal);
         Assert.Equal(0, host.Writes);
     }
@@ -103,7 +106,7 @@ public sealed class RuntimeBoundaryTests
         using var runtime = await host.CreateAsync();
         var result = await runtime.RunAsync("Implement something.");
 
-        Assert.Equal(SquadRunStatus.Blocked, result.Status);
+        Assert.True(result.Status == SquadRunStatus.Blocked, result.ResponseText + "\n" + string.Join("\n", host.Log.Messages));
         Assert.Equal(0, host.Writes);
         Assert.Empty(result.Evidence);
     }
@@ -114,6 +117,8 @@ public sealed class RuntimeBoundaryTests
     public async Task DeclaredWorkerExecutesWithInheritedOwnershipAndDepthLimit(bool limited)
     {
         using var host = new RuntimeTestHost();
+        using var log = new RuntimeTestLogger();
+        host.Options.LoggerFactory = log;
         host.WriteCharter("researcher", children: "Bounded Worker");
         host.Write("agents/worker.agent.md", "---\nname: Bounded Worker\nuser-invocable: false\n---\nSynthetic delegated worker.");
         host.Options.MaxDepth = limited ? 1 : 3;
@@ -128,7 +133,8 @@ public sealed class RuntimeBoundaryTests
         using var runtime = await host.CreateAsync();
         var result = await runtime.RunAsync("Write documentation.");
 
-        Assert.True(result.Status == (limited ? SquadRunStatus.LimitReached : SquadRunStatus.Completed), result.ResponseText);
+        Assert.True(result.Status == (limited ? SquadRunStatus.LimitReached : SquadRunStatus.Completed),
+            result.ResponseText + "\n" + string.Join("\n", log.Messages));
         if (!limited)
         {
             Assert.Equal(5, result.Evidence.Count);
@@ -222,13 +228,13 @@ public sealed class RuntimeBoundaryTests
         using var host = new RuntimeTestHost();
         var path = Path.Combine(host.Artifacts, "instructions", "squad", "squad-roster.instructions.md");
         File.WriteAllText(path, File.ReadAllText(path).Replace(".copilot-tracking/researcher/", ".copilot-tracking/squad/", StringComparison.Ordinal));
-        host.QueuePipeline();
-        using var runtime = await host.CreateAsync();
-        var result = await runtime.RunAsync("Implement a change.");
 
-        Assert.Equal(SquadRunStatus.Failed, result.Status);
-        Assert.Single(host.Client.Calls);
-        Assert.Empty(result.Evidence);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => host.CreateAsync());
+
+        Assert.Contains("not an isolated role deliverable root", exception.Message, StringComparison.Ordinal);
+        Assert.Empty(host.Client.Calls);
+        Assert.Equal(0, host.Writes);
+        Assert.False(Directory.Exists(Path.Combine(host.Project, host.Options.SquadRoot)));
     }
 
     [Fact]
@@ -270,8 +276,9 @@ public sealed class RuntimeBoundaryTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => runtime.RunAsync("Implement a change.", cancellation.Token));
         Assert.Equal(0, host.Writes);
         using var state = JsonDocument.Parse(File.ReadAllText(Path.Combine(host.Project, ".copilot-tracking", "squad", "state.json")));
-        Assert.Equal((int)SquadRunStatus.Failed, state.RootElement.GetProperty("Runs")[0].GetProperty("Status").GetInt32());
-        Assert.Equal(1, state.RootElement.GetProperty("Runs")[0].GetProperty("Evidence").GetArrayLength());
+        Assert.Equal((int)SquadRunStatus.Failed, state.RootElement.GetProperty("ActiveRun").GetProperty("Status").GetInt32());
+        Assert.Equal(1, state.RootElement.GetProperty("ActiveRun").GetProperty("Evidence").GetArrayLength());
+        Assert.Equal("suspended", state.RootElement.GetProperty("Checkpoint").GetProperty("Status").GetString());
     }
 
     [Fact]
@@ -294,22 +301,34 @@ public sealed class RuntimeBoundaryTests
     }
 
     [Fact]
-    public async Task MissingCouncilSeatIsNeverSilentlySubstitutedOrOmitted()
+    public async Task MissingCouncilSeatRequiresConfirmedExtensionOrExplicitScopedWaiver()
     {
         using var host = new RuntimeTestHost();
         var path = Path.Combine(host.Artifacts, "instructions", "squad", "squad-roster.instructions.md");
         File.WriteAllText(path, File.ReadAllText(path).Replace(
             ", architect, security, cost-manager, product-owner, rai", "", StringComparison.Ordinal));
+        host.Options.Council = new() { Roles = ["architect", "security"] };
+        host.Options.ApproveAsync = (approval, _) =>
+        {
+            host.Approvals.Add(approval);
+            return ValueTask.FromResult(approval.Kind != SquadApprovalKind.RosterUpdate);
+        };
         host.QueuePipeline(council: true);
         host.QueueStage("researcher");
         host.QueueStage("lead");
+        host.QueueStage("developer");
+        host.QueueStage("tester");
+        host.Client.Text("Verified delivery with a recorded scoped waiver.");
         using var runtime = await host.CreateAsync();
-        var result = await runtime.RunAsync("Implement a source change.");
+        var result = await runtime.RunAsync("Implement an architecture and security source change.");
 
-        Assert.Equal(SquadRunStatus.Blocked, result.Status);
-        Assert.Contains("architect", result.ResponseText, StringComparison.Ordinal);
-        Assert.Equal(["research", "plan"], result.Evidence.Select(e => e.Stage));
-        Assert.Equal(0, host.Writes);
+        Assert.True(result.Status == SquadRunStatus.Completed, result.ResponseText);
+        var extension = Assert.Single(host.Approvals, approval => approval.Kind == SquadApprovalKind.RosterUpdate);
+        Assert.Equal(["architect", "security"], extension.Council!.MissingRoles);
+        Assert.DoesNotContain(result.Evidence, evidence => evidence.Stage == "council");
+        Assert.Contains("Council Waiver", File.ReadAllText(Path.Combine(host.Project, host.Options.SquadRoot, "decisions.md")),
+            StringComparison.Ordinal);
+        Assert.Equal(1, host.Writes);
     }
 
     [Fact]
@@ -317,9 +336,12 @@ public sealed class RuntimeBoundaryTests
     {
         using var host = new RuntimeTestHost();
         host.Client.Call("ask_host", new() { ["question"] = "Which environment?" });
+        string runId;
         using (var first = await host.CreateAsync())
         {
-            Assert.Equal(SquadRunStatus.InputRequired, (await first.RunAsync("Implement the original task.")).Status);
+            var pending = await first.RunAsync("Implement the original task.");
+            Assert.Equal(SquadRunStatus.InputRequired, pending.Status);
+            runId = pending.RunId;
         }
 
         host.Client.Steps.Enqueue((messages, _) =>
@@ -330,15 +352,19 @@ public sealed class RuntimeBoundaryTests
             return new ChatResponse(new ChatMessage(ChatRole.Assistant, "No pipeline for this history test."));
         });
         using var next = await host.CreateAsync();
-        var result = await next.RunAsync("Use the test environment.");
+        var result = await next.ResumeAsync(runId);
         Assert.True(result.Status == SquadRunStatus.Blocked, result.ResponseText);
     }
 
     [Theory]
     [Trait("Category", "ReleaseCompatibility")]
-    [InlineData("default", false)]
-    [InlineData("full", true)]
-    public async Task ReleasedArtifactTreeRunsWhenExplicitlyProvided(string profile, bool intakeAndCouncil)
+    [InlineData("default", false, "interactive")]
+    [InlineData("full", true, "interactive")]
+    [InlineData("default", false, "autonomous")]
+    [InlineData("full", true, "autonomous")]
+    [InlineData("default", false, "autopilot")]
+    [InlineData("full", true, "autopilot")]
+    public async Task ReleasedArtifactTreeRunsWhenExplicitlyProvided(string profile, bool intakeAndCouncil, string mode)
     {
         var path = Environment.GetEnvironmentVariable("HVE_SQUAD_RELEASE_ROOT");
         var version = Environment.GetEnvironmentVariable("HVE_SQUAD_RELEASE_VERSION");
@@ -347,7 +373,7 @@ public sealed class RuntimeBoundaryTests
         SquadArtifactSource source;
         if (!string.IsNullOrWhiteSpace(version))
         {
-            source = new ReleaseArtifactSource(version == "latest" ? null : version, httpClient: releaseClient);
+            source = ReleaseTestHttpClient.Source(version, releaseClient);
         }
         else if (!string.IsNullOrWhiteSpace(path))
         {
@@ -362,6 +388,45 @@ public sealed class RuntimeBoundaryTests
 
         using var host = new RuntimeTestHost();
         host.Options.Profile = profile;
+        host.Options.NamingPolicy = "assigned";
+        host.Options.Mode = mode;
+        if (mode != "interactive")
+        {
+            host.Options.MaxConcurrentDispatches = 1;
+            host.Options.AdditionalRoles.Add("architect");
+            host.Options.Tools[0] = host.Options.Tools[0] with { Impact = SquadToolImpact.Safe };
+            host.Options.Council = new() { Roles = ["architect"] };
+        }
+        if (intakeAndCouncil)
+        {
+            host.Options.Council = new() { Roles = ["architect", "security", "cost-manager", "product-owner"] };
+        }
+        using var runtime = await SquadRuntime.CreateAsync(host.Client, host.Options, source);
+        Assert.Equal("Alpha", runtime.Roster.Resolve("researcher")!.MemberName);
+        Assert.Equal("Beta", runtime.Roster.Resolve("lead")!.MemberName);
+        Assert.Equal(runtime.Roster.Members.Count,
+            runtime.Roster.Members.Select(member => member.MemberName).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        if (runtime.Roster.Members.Count > 24)
+        {
+            Assert.Contains(runtime.Roster.Members, member => member.MemberName == "Alpha-2");
+        }
+        var planSkill = Assert.Single(runtime.Artifacts.Skills, s => s.Name == "rpi-plan");
+        if (runtime.Provenance.Release?.Tag == SupportedSquadRelease.Current.Tag)
+        {
+            var squadSkill = Assert.Single(runtime.Artifacts.Skills, skill => skill.Name == "squad");
+            var catalog = HveSquad.AgentFramework.Artifacts.SquadModelCatalog.Parse(
+                File.ReadAllText(Path.Combine(squadSkill.DirectoryPath, "references", "model-catalog.md")),
+                File.ReadAllText(Path.Combine(squadSkill.DirectoryPath, "references", "model-routing.md")));
+            var advertised = catalog.Models.Select(model => model.Id).ToArray();
+            Assert.Equal("claude-opus-5.5", catalog.Rank(advertised, "research", "default")[0].Id);
+            Assert.Equal("gpt-5.6-sol", catalog.Rank(advertised, "planning", "default")[0].Id);
+            Assert.Equal("gpt-5.3-codex", catalog.Rank(advertised, "implementation", "default")[0].Id);
+            Assert.Equal("gpt-6-sol", catalog.Rank(advertised, "review", "fast")[0].Id);
+            Assert.Equal("gpt-5.5", catalog.Rank(advertised, "council", "default")[0].Id);
+            Assert.Equal("claude-sonnet-5.5", catalog.Rank(advertised, "intake", "fast")[0].Id);
+            Assert.Equal("claude-haiku-4.5", catalog.Rank(advertised, "bookkeeping", "fast")[0].Id);
+        }
+        host.SinglePlan = !File.Exists(Path.Combine(planSkill.DirectoryPath, "templates", "implementation-details.md"));
         var inputs = intakeAndCouncil ? new[] { "requirements.txt" } : [];
         if (intakeAndCouncil)
         {
@@ -375,30 +440,64 @@ public sealed class RuntimeBoundaryTests
         host.QueueSkillResource("rpi-research", "templates/research.md", "Primary evidence file");
         host.QueueStage("researcher");
         host.QueueSkillResource("rpi-plan", "templates/implementation-plan.md", "Phase Checklist");
-        host.QueueSkillResource("rpi-plan", "templates/implementation-details.md", "P01");
-        host.QueueStage("lead");
-        if (intakeAndCouncil)
+        if (!host.SinglePlan)
         {
-            foreach (var seat in new[] { "architect", "security", "cost-manager", "product-owner" })
+            host.QueueSkillResource("rpi-plan", "templates/implementation-details.md", "P01");
+        }
+        host.QueueStage("lead");
+        var seats = intakeAndCouncil ? new[] { "architect", "security", "cost-manager", "product-owner" } :
+            mode == "interactive" ? [] : new[] { "architect" };
+        if (seats.Length > 0)
+        {
+            foreach (var seat in seats)
             {
                 host.QueueStage(seat, "Approve");
             }
         }
         host.QueueStage("developer");
+        if (mode != "interactive")
+        {
+            foreach (var seat in seats)
+            {
+                host.QueueStage(seat, "Approve");
+            }
+        }
         host.QueueStage("tester");
         host.Client.Text("Coordinator synthesis.");
-        using var runtime = await SquadRuntime.CreateAsync(host.Client, host.Options, source);
         var result = await runtime.RunAsync("Implement a small local source change.");
 
         Assert.True(result.Status == SquadRunStatus.Completed, result.ResponseText);
         string[] expected = intakeAndCouncil
             ? ["intake", "research", "plan", "council", "council", "council", "council", "produce", "review"]
             : ["research", "plan", "produce", "review"];
+        if (mode != "interactive")
+        {
+            expected = (intakeAndCouncil ? IntakeStages : []).Concat(ResearchAndPlanStages)
+                .Concat(seats.Select(_ => "council")).Append("produce")
+                .Concat(seats.Select(_ => "council")).Append("review").ToArray();
+            Assert.Single(result.ModeOutcome!.Iterations);
+            Assert.True(result.ModeOutcome.Converged);
+            Assert.Equal(mode == "autopilot", result.ModeOutcome.FinalValidated);
+            Assert.DoesNotContain(host.Approvals, approval => approval.Kind is SquadApprovalKind.Plan or
+                SquadApprovalKind.Implementation or SquadApprovalKind.ConsequentialTool);
+        }
         Assert.Equal(expected, result.Evidence.Select(e => e.Stage));
         Assert.Contains(runtime.Artifacts.Skills, s => s.Name == "squad");
         Assert.Contains(runtime.Artifacts.Skills, s => s.Name == "rpi-plan");
         Assert.Contains(runtime.Artifacts.Skills, s => s.Name == "rpi-research");
         Assert.Empty(runtime.Artifacts.Warnings);
+        foreach (var charter in runtime.Artifacts.Charters)
+        {
+            foreach (var child in charter.DelegateAgents.Where(name => runtime.Artifacts.FindCharter(name) is null))
+            {
+                var role = Assert.Single(runtime.Catalog.Roles, r =>
+                    string.Equals(r.PrimaryAgent, child, StringComparison.OrdinalIgnoreCase) ||
+                    r.AlternateAgents.Contains(child, StringComparer.OrdinalIgnoreCase));
+                Assert.Contains(runtime.Catalog.RegisteredResources, resource =>
+                    resource.Role == role.Name && resource.Kind == "agent" && resource.Tier == "opt-in" &&
+                    !string.IsNullOrWhiteSpace(resource.InstallOrEntry));
+            }
+        }
         if (!string.IsNullOrWhiteSpace(version))
         {
             Assert.NotNull(runtime.Provenance.Release);
@@ -407,7 +506,7 @@ public sealed class RuntimeBoundaryTests
                 Assert.Equal(version, runtime.Provenance.Release.Tag);
             }
         }
-        Assert.Equal(2, Assert.Single(result.Evidence, e => e.Stage == "plan").Artifacts!.Count);
+        Assert.Equal(host.SinglePlan ? 1 : 2, Assert.Single(result.Evidence, e => e.Stage == "plan").Artifacts!.Count);
         if (intakeAndCouncil)
         {
             Assert.Null(runtime.Roster.Resolve("intake-validator")!.DeliverableRoot);
@@ -421,6 +520,8 @@ public sealed class RuntimeBoundaryTests
             });
         }
         Assert.Empty(host.Client.Steps);
+        await ReleaseTestHttpClient.RecordObservationAsync(runtime, host.Project, result,
+            "native-" + profile + "-" + mode, host.Options.SquadRoot);
     }
 
     private static ChatResponse Call(string name, Dictionary<string, object?> arguments) =>

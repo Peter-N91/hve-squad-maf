@@ -1,5 +1,6 @@
 using System.Text.Json;
 using HveSquad.AgentFramework.Runtime;
+using Microsoft.Extensions.AI;
 
 namespace HveSquad.AgentFramework.Sample;
 
@@ -33,6 +34,62 @@ internal sealed class ProjectFileWriter
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ArgumentNullException.ThrowIfNull(content);
         cancellationToken.ThrowIfCancellationRequested();
+        var destination = Resolve(path);
+        var parent = Path.GetDirectoryName(destination)
+            ?? throw new InvalidOperationException("The requested path has no project-relative parent.");
+        Directory.CreateDirectory(parent);
+        RejectLinks(destination);
+        await File.WriteAllTextAsync(destination, content, cancellationToken);
+        return Path.GetRelativePath(_projectRoot, destination);
+    }
+
+    internal ValueTask<SquadEffectReconciliation> ReconcileAsync(
+        SquadEffectReconciliationRequest request, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!request.Arguments.TryGetProperty("path", out var path) || path.ValueKind != JsonValueKind.String ||
+            !request.Arguments.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.String)
+        {
+            throw new InvalidOperationException("The protected write payload has an invalid argument shape.");
+        }
+
+        var destination = Resolve(path.GetString()!);
+        var expected = System.Text.Encoding.UTF8.GetBytes(content.GetString()!);
+        if (!File.Exists(destination) || new FileInfo(destination).Length != expected.Length ||
+            !File.ReadAllBytes(destination).AsSpan().SequenceEqual(expected))
+        {
+            return ValueTask.FromResult(new SquadEffectReconciliation(SquadEffectDisposition.CannotConfirm,
+                Diagnostic: "The idempotent final-content postcondition is not established; no write was replayed."));
+        }
+
+        var relative = Path.GetRelativePath(_projectRoot, destination);
+        return ValueTask.FromResult(new SquadEffectReconciliation(SquadEffectDisposition.Executed,
+            new([relative]), JsonSerializer.SerializeToElement(relative),
+            "The exact final bytes of the idempotent local write were verified."));
+    }
+
+    internal IReadOnlyList<string> ProjectWritePaths(AIFunctionArguments arguments)
+    {
+        if (!arguments.TryGetValue("path", out var value))
+        {
+            throw new InvalidOperationException("The source writer requires a projected path.");
+        }
+        var path = value switch
+        {
+            string text => text,
+            JsonElement { ValueKind: JsonValueKind.String } element => element.GetString(),
+            _ => null,
+        };
+        if (path is null)
+        {
+            throw new InvalidOperationException("The source writer's projected path must be text.");
+        }
+        return [Path.GetRelativePath(_projectRoot, Resolve(path)).Replace('\\', '/')];
+    }
+
+    internal string Resolve(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
         var components = path.Replace('\\', '/').Split('/');
         if (Path.IsPathRooted(path) || path.StartsWith('/') || path.StartsWith('\\') ||
             path.Contains(':', StringComparison.Ordinal) ||
@@ -53,12 +110,7 @@ internal sealed class ProjectFileWriter
         }
 
         RejectLinks(destination);
-        var parent = Path.GetDirectoryName(destination)
-            ?? throw new InvalidOperationException("The requested path has no project-relative parent.");
-        Directory.CreateDirectory(parent);
-        RejectLinks(destination);
-        await File.WriteAllTextAsync(destination, content, cancellationToken);
-        return Path.GetRelativePath(_projectRoot, destination);
+        return destination;
     }
 
     internal static SquadToolOutput GetOutputEvidence(object? result)

@@ -14,11 +14,12 @@ Build and preview
 The development server uses port 4174. Pagefind indexes refresh during docs:build;
 restart docs:dev after content edits to refresh search. The Pages workflow builds
 and validates pull requests, but only publishes from main. Generated _site output
-is ignored by Git. Existing release compatibility checks still validate the
-original English source pages.
+is ignored by Git. The shared Windows/Linux native acceptance matrix also runs
+the bilingual documentation contracts/build on Linux; PR and nightly/main
+validation use the same acceptance workflow without publishing its package.
 
 Content and layout
-  docs/*.html             Authoritative, unchanged English technical content
+  docs/*.html             Authoritative English technical content
   docs/fr/*.html          Complete French equivalents
   site/locales.json       Locale registry, direction, UI and navigation labels
   site/pages.njk          Shared documentation shell

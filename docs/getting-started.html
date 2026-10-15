@@ -12,13 +12,13 @@ html[data-theme="dark"] { color-scheme: dark; --cp-bg: #3d3b3a; --cp-bg-elevated
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="assets/site.css"><script src="assets/site.js" defer></script>
 </head><body>
 <a class="skip-link" href="#main">Skip to content</a>
-<aside class="sidebar"><a class="brand" href="index.html"><img src="assets/logo.svg" alt="" width="48" height="48"><span>HVE Squad<small>for Agent Framework</small></span></a><button class="mobile-toggle" type="button" aria-controls="site-navigation" aria-expanded="true" hidden>Menu</button><nav id="site-navigation" aria-label="Main navigation"><p class="nav-label">Documentation</p><a href="index.html">Overview</a><a href="getting-started.html" aria-current="page">Getting started</a><a href="usage.html">Runtime reference</a><a href="hosting.html">Hosting &amp; operations</a><a href="use-cases.html">Use cases</a><a href="federation.html">Federation &amp; scope</a><a href="maintaining.html">Contributing &amp; maintaining</a></nav><div class="sidebar-bottom"><p>Native .NET 10 · MAF 1.17</p><p>0.1.0-preview.1 · Unpublished</p><a href="https://github.com/Peter-N91/hve-squad-maf">View source on GitHub ↗</a></div></aside>
+<aside class="sidebar"><a class="brand" href="index.html"><img src="assets/logo.svg" alt="" width="48" height="48"><span>HVE Squad<small>for Agent Framework</small></span></a><button class="mobile-toggle" type="button" aria-controls="site-navigation" aria-expanded="true" hidden>Menu</button><nav id="site-navigation" aria-label="Main navigation"><p class="nav-label">Documentation</p><a href="index.html">Overview</a><a href="getting-started.html" aria-current="page">Getting started</a><a href="usage.html">Runtime reference</a><a href="hosting.html">Hosting &amp; operations</a><a href="use-cases.html">Use cases</a><a href="federation.html">Federation &amp; scope</a><a href="maintaining.html">Contributing &amp; maintaining</a></nav><div class="sidebar-bottom"><p>Native .NET 10 · MAF 1.22</p><p>0.1.0-preview.1 · Unpublished</p><a href="https://github.com/Peter-N91/hve-squad-maf">View source on GitHub ↗</a></div></aside>
 <div class="shell"><header class="topbar"><span>Guide / Getting started</span><div class="topbar-actions"><a href="https://github.com/Peter-N91/hve-squad-maf/tree/main/samples">Sample source ↗</a><button class="theme-toggle" type="button" hidden>Theme</button></div></header>
 <main id="main"><p class="eyebrow">From approved case inputs to a first turn</p><h1>Bring a model.<br>Start with a business case.</h1><p class="lede">Begin with a credential-free inspection. Then use fictional RFP and product-capability text for a read-only research request. This is a small integration check on the way to an <a href="use-cases.html#rfp">RFP response workbench inside your application</a>, not a coding-assistant workflow.</p>
 <div class="callout"><p><strong>The package is not on NuGet.org.</strong> <code>HveSquad.AgentFramework</code> version <code>0.1.0-preview.1</code> is an unpublished preview. Use the project-reference path below, or pack it into a local feed. No separate MCP service is required. Maintainers follow the <a href="maintaining.html#publishing">package publishing instructions</a> before any public installation claim.</p></div>
 <nav class="toc" aria-label="On this page"><p>On this page</p><ul><li><a href="#prerequisites">Prerequisites</a></li><li><a href="#inspect">Inspect</a></li><li><a href="#sample">Run the sample</a></li><li><a href="#reference">Project reference</a></li><li><a href="#binding">IChatClient binding</a></li><li><a href="#package">Local package</a></li><li><a href="#di">Dependency injection</a></li></ul></nav>
 <section id="prerequisites"><h2>What you need</h2><div class="table-wrap"><table><thead><tr><th scope="col">Dependency</th><th scope="col">When and why</th></tr></thead><tbody>
-<tr><td>.NET 10 SDK</td><td>Build and run the library and sample. The integration uses Microsoft.Agents.AI 1.17.0 and Microsoft.Extensions.AI 10.8.3.</td></tr>
+<tr><td>.NET 10 SDK</td><td>Build and run the library and sample. The integration uses Microsoft.Agents.AI 1.22.0 and Microsoft.Extensions.AI 10.10.0.</td></tr>
 <tr><td>Git + APM CLI</td><td>On PATH for first release acquisition. Compatibility CI exercises APM 0.18.0. Install using the <a href="https://github.com/microsoft/apm">official APM instructions</a>.</td></tr>
 <tr><td>GitHub / dependency access</td><td>Resolve a published release and install its full pinned dependency graph. A source clone alone is not the installed skill tree.</td></tr>
 <tr><td>A dedicated case directory</td><td>An existing writable directory for approved input text, output artifacts, and native state. <code>ProjectPath</code> is its API name; a business case needs no code checkout or Git repository. Use a fresh isolated directory without existing Copilot squad state.</td></tr>
@@ -34,9 +34,9 @@ git --version
 apm --version
 dotnet build HveSquad.AgentFramework.slnx
 
-dotnet run --project samples\HveSquad.AgentFramework.Sample -- --release v0.16.2
+dotnet run --project samples\HveSquad.AgentFramework.Sample -- --release v0.18.1
 dotnet run --project samples\HveSquad.AgentFramework.Sample -- --latest</code></pre></div>
-<p>Expect the release tag, commit, artifact counts, available profiles and packs, and a staged workflow description. For <code>v0.16.2</code>, the exercised commit is <code>a941195c36dfb6181453f51ec4638b085ca3b3ad</code>. Warnings about opt-in external delegates do not imply those capabilities are installed.</p>
+<p>Expect the release tag, commit, artifact counts, available profiles and packs, and a staged workflow description. For <code>v0.18.1</code>, the exercised commit is <code>4c1f140f12f17abd3f200baa3afcb6d4c84bb6da</code>. Warnings about opt-in external delegates do not imply those capabilities are installed.</p>
 <p>With no arguments, the inspector searches upward for installed project artifacts. Positional directory arguments inspect explicit artifact roots. Neither path is the live runtime's default release acquisition.</p></section>
 <section id="sample"><h2>02. Run the existing console sample</h2><p>Provision <code>OPENAI_API_KEY</code> and <code>OPENAI_MODEL</code> in the process environment through your secret manager or secure local configuration. Do not put credentials in source, command history, or run JSON. The sample requires both variables.</p><p><code>OPENAI_ENDPOINT</code> is optional and must be an absolute HTTP or HTTPS URI. Use HTTPS for remote providers; plain HTTP is only appropriate for an explicitly trusted local endpoint. OpenAI-compatible providers, including a correctly configured Azure OpenAI v1 endpoint, must support the selected model and tool calls.</p>
 <div class="code-block"><div class="code-heading">PowerShell · Fictional text inputs and a live research request</div><pre><code>Set-Location C:\Solutions\hve-squad-maf
@@ -49,7 +49,7 @@ Set-Content -LiteralPath C:\app-data\bid-cases\demo\inputs\approved-capabilities
 dotnet run --project samples\HveSquad.AgentFramework.Sample -- `
   --run "Research the question in inputs\rfp.txt using inputs\approved-capabilities.txt. Cite source identifiers and report gaps. Stop after research; do not change inputs or send anything externally." `
   --project C:\app-data\bid-cases\demo `
-  --version v0.16.2 `
+  --version v0.18.1 `
   --profile full</code></pre></div>
 <p>These fixture files contain no real customer or product data. Use a fresh demo directory; the commands replace the two named files. Review the complete initialization and routing proposals, including the research-only scope. Only enter <code>yes</code> when you approve the proposal actually shown. Answer any questions, or stop with Ctrl+C. A focused research run writes research evidence, not a completed proposal response.</p>
 <div class="callout"><p><strong>What the sample can actually do:</strong> read contained case files and write scoped methodology artifacts. It also registers a contained <code>write_project_file</code> tool for the <code>developer</code> role after explicit approval; that optional source-writing demonstration is not needed for this request or the application's business proposition. It has no shell, build, test, web-search, or deployment executor. The library binding below registers no host tools.</p></div>
@@ -57,17 +57,26 @@ dotnet run --project samples\HveSquad.AgentFramework.Sample -- `
 <div class="code-block"><div class="code-heading">JSON · run.json</div><pre><code>{
   "request": "Research the question in inputs\\rfp.txt using inputs\\approved-capabilities.txt. Cite source identifiers and report gaps. Stop after research; do not change inputs or send anything externally.",
   "project": "C:\\app-data\\bid-cases\\demo",
-  "version": "v0.16.2",
+  "version": "v0.18.1",
   "profile": "full"
 }</code></pre></div>
 <div class="code-block"><div class="code-heading">PowerShell · Run configuration</div><pre><code>dotnet run --project samples\HveSquad.AgentFramework.Sample -- --config run.json</code></pre></div>
-<p>CLI flags are <code>--run</code>, <code>--project</code>, <code>--version</code>, and <code>--profile</code>. <code>--config</code> takes one file and is not combined with these flags. Unknown JSON members and invalid or duplicate flags are rejected. Successful delivery, research, plan, or review returns exit code 0; other outcomes return 1, invalid arguments return 2, and cancellation returns 130.</p></section>
+<p>The basic live flags are <code>--run</code>, <code>--project</code>, <code>--version</code>, and <code>--profile</code>. <code>--help</code> lists roster, discovery, council, cost, model, mode and same-run resume settings. <code>--config</code> takes one file and cannot install a delegate, renderer, source, connector or credential. Unknown/inapplicable members and invalid/duplicate flags are rejected. Successful live scopes return 0; stopped/failing outcomes return 1, invalid arguments 2, explicit helper fallback/reconciliation 3, and cancellation 130.</p>
+<h3 id="native-examples">Credential-free native hosts and local helpers</h3><p>Use separate existing empty directories for the two demonstrations. They execute real MAF agents with scripted responses and explicitly synthetic local approvals, not paid-model or product-quality evidence. The approval example recreates the original runtime after process exit. The helpers use an existing authorized native case and ask for each exact disclosure; they need no model or release acquisition.</p>
+<div class="code-block"><div class="code-heading">PowerShell · Native execution and helpers</div><pre><code>dotnet run --project samples\HveSquad.AgentFramework.Sample -- --approval-demo start --project C:\app-data\approval-demo
+dotnet run --project samples\HveSquad.AgentFramework.Sample -- --approval-demo resume --project C:\app-data\approval-demo --reply /approve
+dotnet run --project samples\HveSquad.AgentFramework.Sample -- --federation-demo research --project C:\app-data\federation-demo
+dotnet run --project samples\HveSquad.AgentFramework.Sample -- --report governance --project C:\app-data\approval-demo --period 7d
+dotnet run --project samples\HveSquad.AgentFramework.Sample -- --report document --project C:\app-data\approval-demo --request "Current roster and evidence" --format docx
+dotnet run --project samples\HveSquad.AgentFramework.Sample -- --memory read --project C:\app-data\approval-demo --role researcher
+dotnet run --project samples\HveSquad.AgentFramework.Sample -- --learn discover --project C:\app-data\approval-demo</code></pre></div>
+<p>The process-account console is a local reference, not multi-tenant authentication. Never put private helper output in public logs. See <a href="usage.html#learning">memory and human-only learning</a>, <a href="usage.html#registered-scripts">the exact registered process example</a>, and <a href="federation.html#watch">the authorized Watch event host</a> for their independent prerequisites and permissions.</p></section>
 <section id="reference"><h2>03. Add a project reference</h2><p>This is the simplest integration path before publication. It builds the library directly from your checkout. The OpenAI adapter below is needed only for the standalone provider example, not for callers that already have an IChatClient.</p>
 <div class="code-block"><div class="code-heading">PowerShell · Create a consumer application</div><pre><code>dotnet new console --framework net10.0 --output C:\projects\SquadHost
 dotnet add C:\projects\SquadHost\SquadHost.csproj reference `
   C:\Solutions\hve-squad-maf\src\HveSquad.AgentFramework\HveSquad.AgentFramework.csproj
 dotnet add C:\projects\SquadHost\SquadHost.csproj package `
-  Microsoft.Extensions.AI.OpenAI --version 10.8.3</code></pre></div></section>
+  Microsoft.Extensions.AI.OpenAI --version 10.10.0</code></pre></div></section>
 <section id="binding"><h2>04. Bind your IChatClient</h2><p>Add the following as <code>SquadEntry.cs</code> in the consumer application. The application supplies the client and the authorized case directory prepared above; console callbacks explicitly approve proposals and answer questions. This first request only researches capability evidence. For the complete app-owned draft job, including typed output selection and UI callbacks, use <a href="use-cases.html#rfp-code"><code>BidDraftService.DraftAsync</code></a>.</p>
 <div class="code-block"><div class="code-heading">C# · SquadEntry.cs</div><pre><code>using System.Text.Json;
 using HveSquad.AgentFramework.Runtime;
@@ -84,7 +93,7 @@ internal static class SquadEntry
         {
             ProjectPath = caseDirectory,
             Profile = "full",
-            Version = "v0.16.2",
+            Version = "v0.18.1",
             InputPaths = [@"inputs\rfp.txt", @"inputs\approved-capabilities.txt"],
             Tools = [],
             ApprovalChannel = "in-chat",
@@ -158,11 +167,14 @@ dotnet new console --framework net10.0 --output C:\projects\SquadPackageHost
 dotnet add C:\projects\SquadPackageHost\SquadPackageHost.csproj package `
   HveSquad.AgentFramework --version 0.1.0-preview.1 --no-restore
 dotnet add C:\projects\SquadPackageHost\SquadPackageHost.csproj package `
-  Microsoft.Extensions.AI.OpenAI --version 10.8.3 --no-restore
+  Microsoft.Extensions.AI.OpenAI --version 10.10.0 --no-restore
 dotnet restore C:\projects\SquadPackageHost\SquadPackageHost.csproj `
   --source C:\Solutions\hve-squad-maf\artifacts `
   --source https://api.nuget.org/v3/index.json</code></pre></div>
 <p>Add the same <code>SquadEntry.cs</code> and <code>Program.cs</code> from above, then run <code>dotnet run --project C:\projects\SquadPackageHost --no-restore</code>. For ongoing use, add the local feed to the consumer's <code>NuGet.Config</code>; preserve any organization package-source mapping policy. The generated package is <code>artifacts\HveSquad.AgentFramework.0.1.0-preview.1.nupkg</code>, not a published download.</p>
+<h3 id="package-verification">Verify a real isolated package consumer</h3><p>The maintained package-only example restores the actual local package outside this checkout, with package-source mapping and a separate restore folder. It rejects source-project references and compares the loaded DLL bytes to the package. The scripted native check covers original durable resume, actual federation-member execution, local Markdown/HTML/PDF/Word, consumer memory and human-only discovery without resolving a chat client for helpers.</p>
+<div class="code-block"><div class="code-heading">PowerShell · Pack and execute without source references</div><pre><code>pwsh -NoProfile -File .\scripts\Test-PackageConsumer.ps1</code></pre></div>
+<p>Requires .NET 10, PowerShell 7.4+, Git/APM and access to NuGet/public release acquisition, but no model credential or remote write permission. A complete cache is reusable; acquisition errors remain explicit. The script leaves a newly named temporary consumer, package and verification JSON for inspection, never an existing case. The package includes its README, MIT license and exact supported manifest, not upstream charters, customer state or credentials. This mechanical check is not complete 279-assertion or Linux/IndustryIQ acceptance.</p>
 <h3>After publication only</h3><p><strong>The following public-feed installation is NOT available until a maintainer publishes this version.</strong> It shows the intended consumer command, not a working public installation today.</p>
 <div class="code-block"><div class="code-heading">PowerShell · After maintainer publication, inside your app project</div><pre><code>dotnet add package HveSquad.AgentFramework --version 0.1.0-preview.1</code></pre></div></section>
 <section id="di"><h2>Use dependency injection in an existing host</h2><p><code>AddHveSquad</code> returns the service collection and registers a transient <code>SquadRuntimeFactory</code>. It is an async factory pattern, not a synchronously constructed runtime. Acquisition happens in <code>CreateAsync</code>.</p>
@@ -170,7 +182,7 @@ dotnet restore C:\projects\SquadPackageHost\SquadPackageHost.csproj `
   "HveSquad": {
     "ProjectPath": "C:\\app-data\\bid-cases\\demo",
     "Profile": "full",
-    "Version": "v0.16.2",
+    "Version": "v0.18.1",
     "Mode": "interactive",
     "Packs": [],
     "InputPaths": ["inputs\\rfp.txt", "inputs\\approved-capabilities.txt"],
@@ -197,7 +209,7 @@ services.AddHveSquad(
 var factory = serviceProvider.GetRequiredService&lt;SquadRuntimeFactory&gt;();
 using var squad = await factory.CreateAsync(cancellationToken);
 var result = await squad.RunAsync(request, cancellationToken);</code></pre></div>
-<p>Each factory call creates an independently owned runtime. This configuration describes one demo case, not a multi-tenant directory shared by all requests. The app must authorize and select a separate persistent case directory for each business case, and its queue must enforce one active run per case. Do not dispose a runtime while its run is active.</p><p>Register tools, filters, logging, model selection, and callbacks in code, never in JSON. For a hosted UI, implement real human interaction rather than unconditional approval. Callbacks await answers during <code>RunTimeout</code>; there is no durable approval suspension or automatic background-job resume. The app owns document ingestion and rights, approval transport, job status, and secure result delivery. See <a href="use-cases.html#enterprise">the application boundary</a>.</p></section>
+<p>Each factory call creates an independently owned runtime. This configuration describes one demo case, not a multi-tenant directory shared by all requests. The app must authorize and select a separate persistent case directory for each business case, and its queue must enforce one active run per case. Do not dispose a runtime while its run is active.</p><p>Register tools, renderers, memory/source/learning rights, logging, model selection and authenticated channels in code, never in JSON. Ordinary callbacks await answers within <code>RunTimeout</code>. An optional authenticated durable channel instead returns pending metadata; recreate the same host, submit or poll the exact response and call <code>ResumeAsync(runId)</code>. The factory's <code>CreateReports</code>, <code>CreateMemory</code> and <code>CreateLearning</code> need neither a chat-client registration nor acquisition and never initialize state. The app owns ingestion, tenant/case rights, job transport and secure delivery. See <a href="use-cases.html#enterprise">the application boundary</a>.</p></section>
 <nav class="page-end" aria-label="Next pages"><a href="index.html">← Overview</a><a href="usage.html">Runtime reference →</a></nav>
 </main><footer><span>Community project. Not affiliated with or endorsed by Microsoft.</span><span><a href="https://github.com/Peter-N91/hve-squad-maf/blob/main/LICENSE">MIT license</a> · Static docs, no analytics</span></footer></div><p id="copy-status" class="sr-only" role="status" aria-live="polite"></p>
 </body></html>
