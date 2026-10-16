@@ -2,6 +2,10 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
+    groups:
+      codeql-action:
+        patterns:
+          - github/codeql-action*
     schedule:
       interval: weekly
       day: monday
@@ -13,6 +17,9 @@ updates:
   - package-ecosystem: nuget
     directory: /
     groups:
+      microsoft-agents-ai:
+        patterns:
+          - Microsoft.Agents.AI*
       microsoft-extensions-configuration-di:
         patterns:
           - Microsoft.Extensions.Configuration*

@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "repository": "Peter-N91/hve-squad",
+  "tag": "v0.18.1",
+  "commitSha": "4c1f140f12f17abd3f200baa3afcb6d4c84bb6da",
+  "hveCoreRepository": "microsoft/hve-core",
+  "hveCoreCommitSha": "18f5ac75a1556e49f1e90647a4816d17499e1d7f",
+  "behaviorContractPath": "tests/squad-behavior-contract.md",
+  "conformanceStatus": "verified",
+  "artifactContract": "single-plan",
+  "legacyAdvisoryRelease": "v0.16.2",
+  "roleEffects": {
+    "returnsOnly": ["cost-manager", "deployer", "fact-checker", "intake-validator", "asbuilt-author", "azure-diagnose", "aws-diagnose"],
+    "projectWrite": ["developer", "iac-author", "pp-connector", "m365-agent-integrator", "qa-engineer", "release-engineer", "presenter"],
+    "external": ["deployer", "backlog-executor"],
+    "externalRead": ["asbuilt-author", "azure-diagnose", "aws-diagnose"]
+  },
+  "assertionFamilies": [
+    {
+      "family": "SQ",
+      "disposition": "native-equivalent",
+      "adaptation": "Native versioned state and MAF sessions preserve the released initialization, dispatch, identity and evidence behavior. Deterministic Scribe work is recorded without inventing model usage.",
+      "verificationOwner": "HveSquad.AgentFramework.Tests",
+      "implementationTasks": ["P02-T01", "P02-T02", "P03-T01", "P03-T02", "P03-T03", "P06-T03"],
+      "assertionIds": ["SQ-01", "SQ-02", "SQ-03", "SQ-03a", "SQ-03b", "SQ-03c", "SQ-03d", "SQ-03e", "SQ-03f", "SQ-04", "SQ-05", "SQ-05a", "SQ-06", "SQ-07", "SQ-08", "SQ-10", "SQ-10a", "SQ-10b", "SQ-10c", "SQ-10d", "SQ-11", "SQ-11a", "SQ-12", "SQ-13", "SQ-14", "SQ-15", "SQ-16", "SQ-17", "SQ-17a", "SQ-18", "SQ-19", "SQ-20", "SQ-20a", "SQ-21", "SQ-22", "SQ-23", "SQ-24", "SQ-25", "SQ-26", "SQ-27", "SQ-28", "SQ-29", "SQ-30", "SQ-31", "SQ-32", "SQ-33", "SQ-34"]
+    },
+    {
+      "family": "RTE",
+      "disposition": "native-equivalent",
+      "adaptation": "Actual governed MAF dispatches replace IDE subagent tools; routing, ownership, sequence, prerequisite and closing-review semantics remain required.",
+      "verificationOwner": "HveSquad.AgentFramework.Tests",
+      "implementationTasks": ["P03-T02", "P04-T01", "P04-T02", "P05-T02"],
+      "assertionIds": ["RTE-01", "RTE-02", "RTE-03", "RTE-04", "RTE-05", "RTE-06", "RTE-10", "RTE-11", "RTE-12", "RTE-13", "RTE-14", "RTE-15", "RTE-20", "RTE-21", "RTE-22", "RTE-30", "RTE-31", "RTE-32", "RTE-33", "RTE-34", "RTE-35", "RTE-36", "RTE-37"]
+    },
+    {
+      "family": "PRF",
+      "disposition": "native-equivalent",
+      "adaptation": "Canonical released profiles and packs seed confirmed native rosters; optional agents still require their registered installation prerequisites.",
+      "verificationOwner": "HveSquad.AgentFramework.Tests",
+      "implementationTasks": ["P01-T02", "P03-T01", "P06-T01"],
+      "assertionIds": ["PRF-01", "PRF-02", "PRF-03", "PRF-04", "PRF-05", "PRF-06", "PRF-07", "PRF-08", "PRF-09", "PRF-10", "PRF-11", "PRF-20", "PRF-21", "PRF-22", "PRF-23"]
+    },
+    {
+      "family": "CON",
+      "disposition": "native-equivalent",
+      "adaptation": "Native decimal accounting and recorded MAF usage replace Copilot-specific ledger scripts; pricing, calibration, accumulation and admission boundaries remain required.",
+      "verificationOwner": "HveSquad.AgentFramework.Tests",
+      "implementationTasks": ["P02-T02", "P03-T03", "P06-T02"],
+      "assertionIds": ["CON-01", "CON-02", "CON-03", "CON-04", "CON-05", "CON-06", "CON-07", "CON-08", "CON-09", "CON-10", "CON-20", "CON-21", "CON-22", "CON-23", "CON-30", "CON-31", "CON-32", "CON-33", "CON-34", "CON-35", "CON-36", "CON-37", "CON-38", "CON-40", "CON-41", "CON-42", "CON-43", "CON-44", "CON-45", "CON-46", "CON-47", "CON-48"]
+    },
+    {
+      "family": "GATE",
+      "disposition": "native-equivalent",
+      "adaptation": "Typed native verdicts, serialized writer verification and host-authorized gates replace Copilot command text. Bounded correction, real parallelism, barrier safety and failure classes remain required.",
+      "verificationOwner": "HveSquad.AgentFramework.Tests",
+      "implementationTasks": ["P02-T02", "P03-T03", "P04-T01", "P04-T02", "P05-T01", "P05-T02", "P06-T02", "P06-T03"],
+      "assertionIds": ["GATE-01", "GATE-02", "GATE-03", "GATE-04", "GATE-05", "GATE-06", "GATE-07", "GATE-08", "GATE-09", "GATE-10", "GATE-11", "GATE-12", "GATE-13", "GATE-14", "GATE-15", "GATE-16", "GATE-17", "GATE-18", "GATE-19", "GATE-20", "GATE-21", "GATE-22", "GATE-23", "GATE-24", "GATE-25", "GATE-26", "GATE-27", "GATE-28", "GATE-29", "GATE-30", "GATE-31", "GATE-32", "GATE-33", "GATE-34", "GATE-35", "GATE-36", "GATE-37", "GATE-38", "GATE-39", "GATE-40", "GATE-41", "GATE-42", "GATE-43", "GATE-44"]
+    },
+    {
+      "family": "FD",
+      "disposition": "native-equivalent",
+      "adaptation": "An embedded native federation controller reuses isolated inner engines and native migration checkpoints; byte preservation, producer-first handoffs and aggregate gates remain required.",
+      "verificationOwner": "HveSquad.AgentFramework.Tests",
+      "implementationTasks": ["P02-T01", "P06-T01", "P06-T02", "P07-T01"],
+      "assertionIds": ["FD-01", "FD-02", "FD-03", "FD-04", "FD-05", "FD-06", "FD-10", "FD-11", "FD-12", "FD-13", "FD-14", "FD-15", "FD-15a", "FD-16", "FD-17", "FD-18", "FD-19", "FD-20", "FD-21", "FD-30", "FD-31", "FD-32", "FD-33", "FD-40", "FD-41", "FD-42", "FD-43", "FD-44", "FD-45", "FD-60", "FD-61", "FD-62", "FD-63", "FD-64", "FD-65", "FD-66", "FD-67", "FD-68", "FD-69", "FD-50", "FD-51", "FD-52", "FD-53", "FD-54", "FD-55", "FD-56", "FD-57", "FD-58", "FD-59", "FD-70", "FD-71", "FD-72", "FD-73", "FD-74", "FD-75", "FD-76", "FD-77"]
+    },
+    {
+      "family": "DLR",
+      "disposition": "native-equivalent",
+      "adaptation": "Validated native roster roots are authoritative, including approved overrides; member rebasing and explicit shared-output ownership preserve released path semantics.",
+      "verificationOwner": "HveSquad.AgentFramework.Tests",
+      "implementationTasks": ["P02-T01", "P03-T01", "P06-T01", "P06-T02"],
+      "assertionIds": ["DLR-01", "DLR-02", "DLR-03", "DLR-04", "DLR-05", "DLR-06", "DLR-07", "DLR-08", "DLR-09", "DLR-10", "DLR-20", "DLR-21", "DLR-22", "DLR-23", "DLR-24", "DLR-25"]
+    },
+    {
+      "family": "DOC",
+      "disposition": "native-equivalent",
+      "adaptation": "Native read-only snapshots and registered host renderers produce real grounded local exports without creating specialist dispatches or mutating squad state.",
+      "verificationOwner": "HveSquad.AgentFramework.Tests",
+      "implementationTasks": ["P05-T03", "P07-T01"],
+      "assertionIds": ["DOC-01", "DOC-02", "DOC-03", "DOC-04", "DOC-05", "DOC-06", "DOC-07", "DOC-08"]
+    },
+    {
+      "family": "GOV",
+      "disposition": "native-equivalent",
+      "adaptation": "Read-only native evidence reduction supplies the exact seven report sections and six metrics, with honest empty and unknown-cost states.",
+      "verificationOwner": "HveSquad.AgentFramework.Tests",
+      "implementationTasks": ["P03-T03", "P07-T01"],
+      "assertionIds": ["GOV-01", "GOV-02", "GOV-03", "GOV-04", "GOV-05", "GOV-06", "GOV-07", "GOV-08"]
+    },
+    {
+      "family": "LRN",
+      "disposition": "host-adaptation",
+      "adaptation": "Explicit consumer-local memory replaces IDE-global memory. Authenticated human initiation, sanitization, exact row/ID rules and separately approved real remote operations remain required.",
+      "verificationOwner": "HveSquad.AgentFramework.Tests",
+      "implementationTasks": ["P05-T01", "P05-T03", "P07-T02"],
+      "assertionIds": ["LRN-01", "LRN-02", "LRN-03", "LRN-04", "LRN-05", "LRN-06", "LRN-07", "LRN-08"]
+    },
+    {
+      "family": "PKG",
+      "disposition": "host-adaptation",
+      "adaptation": "Immutable APM inputs and a real NuGet package/public API replace plugin manifests, IDE prompt discovery and hook resolution. Delivered dependency/resource closure, entrypoint behavior and clean consumer execution remain required.",
+      "verificationOwner": "HveSquad.AgentFramework.Tests",
+      "implementationTasks": ["P01-T01", "P01-T02", "P03-T03", "P06-T02", "P07-T01", "P07-T02", "P08-T02", "P08-T03"],
+      "assertionIds": ["PKG-01", "PKG-02", "PKG-03", "PKG-04", "PKG-05", "PKG-06", "PKG-07", "PKG-08", "PKG-09", "PKG-10", "PKG-12", "PKG-13", "PKG-14", "PKG-15"]
+    },
+    {
+      "family": "SEM",
+      "disposition": "semantic-comparison",
+      "adaptation": "Artifact-derived native observations and deterministic golden-baseline scoring are mandatory; only answer judging is optional. Drift is advisory until a noise floor is measured.",
+      "verificationOwner": "HveSquad.AgentFramework.Tests",
+      "implementationTasks": ["P08-T01", "P08-T03"],
+      "assertionIds": ["SEM-01", "SEM-02", "SEM-03", "SEM-04", "SEM-05", "SEM-06", "SEM-07"]
+    }
+  ]
+}

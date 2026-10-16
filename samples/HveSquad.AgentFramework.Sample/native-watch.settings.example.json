@@ -1,0 +1,27 @@
+{
+  "repository": "YOUR-OWNER/YOUR-REPOSITORY",
+  "approverHandle": "YOUR-HUMAN-APPROVER",
+  "workflow": {
+    "path": ".github/workflows/native-watch.yml",
+    "blobSha": "0000000000000000000000000000000000000000",
+    "events": ["Issue", "PullRequest", "Comment", "Schedule", "Dispatch", "Push"],
+    "pushBranchPrefixes": ["release/"]
+  },
+  "profile": "default",
+  "additionalRoles": ["intake-validator", "architect"],
+  "writePaths": [],
+  "routedMode": "interactive",
+  "scheduleMode": "autopilot",
+  "scheduleRequest": "Perform an authorized maintenance sweep.",
+  "scheduleTerminal": "Issue",
+  "authorizeTerminal": false,
+  "terminalAuthorizationBinding": "reviewed-watch-terminal:1",
+  "terminal": {
+    "kinds": ["DraftPullRequest", "PullRequestReview", "SourceComment", "Issue", "CommitComment"],
+    "draftHead": null,
+    "draftBase": null,
+    "draftHeadSha": null,
+    "publishedOutputPaths": []
+  },
+  "costCeiling": "unset"
+}

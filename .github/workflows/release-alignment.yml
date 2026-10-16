@@ -1,0 +1,102 @@
+name: Reviewed HVE Squad release alignment
+
+on:
+  schedule:
+    - cron: '37 6 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: hve-squad-release-alignment
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      action: ${{ steps.evaluate.outputs.action }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install the tested artifact package manager
+        run: python -m pip install --disable-pip-version-check apm-cli==0.18.0
+      - name: Evaluate the published stable candidate without write rights
+        id: evaluate
+        shell: pwsh
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+          HVE_SQUAD_RELEASE_GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_APM_PAT_PETER_N91: ${{ github.token }}
+          APM_ALLOW_PROTOCOL_FALLBACK: '1'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $Tool = [IO.Path]::Combine('tools', 'HveSquad.ReleaseSync')
+          $Report = [IO.Path]::Combine('artifacts', 'release-sync', 'report.json')
+          dotnet run --project $Tool --configuration Release -- inspect --head $env:EXPECTED_HEAD --output $Report
+          if ($LASTEXITCODE -ne 0) { throw 'Stable candidate evaluation failed; no proposal was authorized.' }
+          $Result = Get-Content -LiteralPath $Report -Raw | ConvertFrom-Json
+          if ($Result.action -notin @('up-to-date', 'current-evaluated', 'candidate')) { throw 'Unknown evaluation action.' }
+          "action=$($Result.action)" >> $env:GITHUB_OUTPUT
+          "## Official stable release alignment" >> $env:GITHUB_STEP_SUMMARY
+          "Action: $($Result.action). Promotion blockers: $($Result.promotionBlockers.Count)." >> $env:GITHUB_STEP_SUMMARY
+          "The verified production pin is unchanged. Observation drift is advisory; absent baseline/answer judging is not a mechanical pass or failure." >> $env:GITHUB_STEP_SUMMARY
+      - name: Preserve read-only evaluation evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-evaluation
+          path: artifacts/release-sync/report.json
+          if-no-files-found: error
+          retention-days: 30
+
+  propose:
+    needs: evaluate
+    if: needs.evaluate.outputs.action == 'candidate'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-evaluation
+          path: artifacts/release-sync
+      - name: Open or observe the one exact candidate proposal
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_REPOSITORY: ${{ github.repository }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $Tool = [IO.Path]::Combine('tools', 'HveSquad.ReleaseSync')
+          $Report = [IO.Path]::Combine('artifacts', 'release-sync', 'report.json')
+          $Output = [IO.Path]::Combine('artifacts', 'release-sync', 'proposal.json')
+          dotnet run --project $Tool --configuration Release -- propose --allow-write --repository $env:TARGET_REPOSITORY --report $Report --output $Output
+          $ExitCode = $LASTEXITCODE
+          if (Test-Path -LiteralPath $Output) {
+            $Result = Get-Content -LiteralPath $Output -Raw | ConvertFrom-Json
+            "## Reviewed candidate proposal" >> $env:GITHUB_STEP_SUMMARY
+            "State: $($Result.status). $($Result.diagnostic)" >> $env:GITHUB_STEP_SUMMARY
+          }
+          "Bot PR workflows may require a writer to select **Approve workflows to run** in the merge box. Missing, pending, failed or wrong-head checks block promotion." >> $env:GITHUB_STEP_SUMMARY
+          if ($ExitCode -ne 0) { throw 'Proposal setup/status failed; inspect permissions, existing proposal and exact-head checks. No promotion was performed.' }

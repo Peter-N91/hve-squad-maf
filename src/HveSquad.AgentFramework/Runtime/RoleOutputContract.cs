@@ -1,27 +1,18 @@
 namespace HveSquad.AgentFramework.Runtime;
 
 /// <summary>
-/// Native safety contracts for the v0.16.2 cast. Unknown absent roots fail closed.
+/// Native effect contracts owned by the supported-release inventory. Unknown absent roots fail closed.
 /// These are effect requirements, not inference from task prose or charter descriptions.
 /// </summary>
 internal static class RoleOutputContract
 {
-    internal static bool ReturnsOnly(string role) => role.ToLowerInvariant() is
-        "cost-manager" or "deployer" or "fact-checker" or "intake-validator" or
-        "asbuilt-author" or "azure-diagnose" or "aws-diagnose";
+    internal static bool ReturnsOnly(string role) => Sources.SupportedSquadRelease.Current.ReturnsOnly(role);
 
-    internal static SquadToolEffect? RequiredEffect(string role) => role.ToLowerInvariant() switch
-    {
-        "developer" or "iac-author" or "pp-connector" or "m365-agent-integrator" or
-            "qa-engineer" or "release-engineer" or "presenter" => SquadToolEffect.ProjectWrite,
-        "deployer" or "backlog-executor" => SquadToolEffect.External,
-        "asbuilt-author" or "azure-diagnose" or "aws-diagnose" => SquadToolEffect.ExternalRead,
-        _ => null,
-    };
+    internal static SquadToolEffect? RequiredEffect(string role) => Sources.SupportedSquadRelease.Current.RequiredEffect(role);
 
     internal static bool Proves(string role, SquadToolEffect effect, SquadToolExecution receipt)
     {
-        if (receipt.Effect != effect)
+        if (receipt.Effect != effect || receipt.Status != SquadToolOutputStatus.Succeeded)
         {
             return false;
         }

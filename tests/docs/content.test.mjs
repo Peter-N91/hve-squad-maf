@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { load } from "cheerio";
-import { enhanceContent, headingIds, readLocales, pageOrder } from "../../scripts/docs-content.mjs";
+import { enhanceContent, headingIds, readLocales, readSource, pageOrder } from "../../scripts/docs-content.mjs";
 
 test("every declared language has the complete navigation and UI contract", () => {
   const locales = readLocales();
@@ -60,4 +61,64 @@ test("nested source navigation and illustrated homepage content remain intact", 
   assert.equal($("img").attr("src"), "../assets/logo.svg");
   assert.equal($("img").attr("alt"), "Three nodes");
   assert.equal($(".source-toc").text(), "Publication sequencePublish");
+});
+
+test("both languages describe the actual package versions and release-pinned public examples", () => {
+  const project = readFileSync(new URL("../../src/HveSquad.AgentFramework/HveSquad.AgentFramework.csproj", import.meta.url), "utf8");
+  const maf = project.match(/Include="Microsoft.Agents.AI" Version="([^"]+)"/)[1];
+  const extensions = project.match(/Include="Microsoft.Extensions.AI" Version="([^"]+)"/)[1];
+  const manifest = JSON.parse(readFileSync(new URL("../../compatibility/hve-squad-release.json", import.meta.url), "utf8"));
+  for (const prefix of ["", "fr/"]) {
+    for (const slug of pageOrder) {
+      const { $ } = readSource(slug, prefix);
+      assert($(".sidebar-bottom").text().includes(`MAF ${maf.split(".").slice(0, 2).join(".")}`));
+      assert(!$("main").text().includes("10.8.3"));
+      assert(!$("main").text().includes("1.17.0"));
+    }
+    const setup = readSource("getting-started", prefix).$;
+    assert(setup("main").text().includes(`Microsoft.Extensions.AI ${extensions}`));
+    const examples = readSource("use-cases", prefix).$;
+    assert(examples("pre").text().includes(`Version = "${manifest.tag}"`));
+    assert(setup("#package-verification").length === 1);
+    assert(setup("pre").text().includes("scripts\\Test-PackageConsumer.ps1"));
+  }
+});
+
+test("native helper and reviewed-upgrade commands keep their distinct permission boundaries", () => {
+  for (const prefix of ["", "fr/"]) {
+    const runtime = readSource("usage", prefix).$;
+    const commands = runtime("#helper-cli pre").text();
+    for (const flag of ["--memory remember", "--memory read", "--learn discover", "--learn prepare", "--learn promote"]) {
+      assert(commands.includes(flag), `Missing real helper command ${flag}`);
+    }
+    const selection = runtime("tr").filter((_, element) =>
+      runtime(element).find("td:first-child code").text() === "SelectCouncilAsync");
+    assert.equal(selection.length, 1);
+    assert.equal(selection.closest("table").find("caption").text(), prefix
+      ? "Options réservées à l’hôte : à configurer dans le code, pas en JSON"
+      : "Host-only options: configure in code, not JSON");
+    const maintenance = readSource("maintaining", prefix).$;
+    assert(maintenance("#reviewed-alignment").length === 1);
+    for (const workflow of ["release-alignment.yml", "release-candidate.yml"]) {
+      assert(maintenance("#workflows").text().includes(workflow));
+    }
+    assert(maintenance("#updates").text().includes("candidate-linux"));
+    assert(maintenance("#updates").text().includes("candidate-windows"));
+    assert(maintenance("#updates").text().includes("unbaselined"));
+    assert(maintenance("#updates").text().includes("not judged"));
+  }
+});
+
+test("individual conformance examples require full tests and actual package evidence in both languages", () => {
+  for (const prefix of ["", "fr/"]) {
+    const $ = readSource("maintaining", prefix).$;
+    assert.equal($("#native-conformance").length, 1);
+    const commands = $("#native-conformance").nextAll(".code-block").first().find("pre").text();
+    for (const required of ["HVE_SQUAD_REQUIRE_RELEASE_TESTS", "Test-PackageConsumer.ps1", "verify-conformance", "--package-proof", "candidate.trx"]) {
+      assert(commands.includes(required), `Missing actual acceptance input ${required}`);
+    }
+    assert(!commands.includes("--filter"));
+    assert($("main").text().includes("IndustryIQ"));
+    assert($("a[href$='compatibility/hve-squad-conformance.json']").length > 0);
+  }
 });

@@ -35,9 +35,18 @@ public sealed class SquadAgentFactory
         _options = options ?? new SquadAgentFactoryOptions();
     }
 
+    /// <summary>Creates a raw caller-owned model agent, excluding the authenticated human-only learning helper.</summary>
+    /// <param name="charter">Actual parsed charter.</param>
+    /// <returns>The model agent; governed delivery remains a separate runtime surface.</returns>
+    /// <exception cref="InvalidOperationException">The charter identifies human-only Squad Learn.</exception>
     public AIAgent Create(AgentCharter charter)
     {
         ArgumentNullException.ThrowIfNull(charter);
+        if (IsLearningHelper(charter))
+        {
+            throw new InvalidOperationException(
+                "Squad Learn is an authenticated human-only helper, not a MAF agent. Use SquadLearning with explicit host authentication.");
+        }
 
         var chatClient = _options.ChatClientSelector?.Invoke(charter) ?? _defaultChatClient;
 
@@ -58,7 +67,9 @@ public sealed class SquadAgentFactory
         return agent;
     }
 
-    /// <summary>Creates one agent per charter, keyed by charter name.</summary>
+    /// <summary>Creates model agents keyed by charter name, excluding human-only Squad Learn.</summary>
+    /// <param name="artifacts">Loaded deployed artifacts.</param>
+    /// <returns>Raw model agents, not human learning capabilities.</returns>
     public IReadOnlyDictionary<string, AIAgent> CreateAll(SquadArtifacts artifacts)
     {
         ArgumentNullException.ThrowIfNull(artifacts);
@@ -67,9 +78,16 @@ public sealed class SquadAgentFactory
 
         foreach (var charter in artifacts.Charters)
         {
-            agents[charter.Name] = Create(charter);
+            if (!IsLearningHelper(charter))
+            {
+                agents[charter.Name] = Create(charter);
+            }
         }
 
         return agents;
     }
+
+    private static bool IsLearningHelper(AgentCharter charter) =>
+        charter.Name.Equals("Squad Learn", StringComparison.OrdinalIgnoreCase) ||
+        Path.GetFileName(charter.SourcePath).EndsWith("squad-learn.agent.md", StringComparison.OrdinalIgnoreCase);
 }

@@ -67,7 +67,7 @@ public sealed class RuntimeContractTests
         using (var first = await host.CreateAsync())
         {
             var result = await first.RunAsync("Document the original workload.");
-            Assert.True(result.Status == SquadRunStatus.Completed, result.ResponseText);
+            Assert.True(result.Status == SquadRunStatus.Completed, result.ResponseText + "\n" + string.Join("\n", host.Log.Messages));
         }
         using (var state = JsonDocument.Parse(File.ReadAllText(Path.Combine(host.Project, ".copilot-tracking", "squad", "state.json"))))
         {
@@ -194,7 +194,7 @@ public sealed class RuntimeContractTests
         var result = await runtime.RunAsync("Research only.");
         Assert.Equal(SquadRunStatus.Failed, result.Status);
         using var state = JsonDocument.Parse(File.ReadAllText(Path.Combine(host.Project, ".copilot-tracking", "squad", "state.json")));
-        Assert.Equal("hve-squad-maf/native-single-squad/v1", state.RootElement.GetProperty("Schema").GetString());
+        Assert.Equal("hve-squad-maf/native-squad/v2", state.RootElement.GetProperty("Schema").GetString());
         Assert.Equal(0, host.Writes);
     }
 
@@ -205,7 +205,10 @@ public sealed class RuntimeContractTests
     public async Task IacRequiresActualSourceOutputNotJustAChangeRecord(bool registered, bool correctRoot)
     {
         using var host = new RuntimeTestHost();
+        using var log = new RuntimeTestLogger();
+        host.Options.LoggerFactory = log;
         host.Options.Tools.Clear();
+        host.Options.Council = new() { Roles = [], WaiverReason = "This effect fixture tests only the verified local source output contract." };
         var calls = 0;
         var path = correctRoot ? "infra/bicep/sample/main.bicep" : "docs/claimed-iac.md";
         if (registered)
@@ -237,7 +240,8 @@ public sealed class RuntimeContractTests
         using var runtime = string.IsNullOrWhiteSpace(release) ? await host.CreateAsync() :
             await SquadRuntime.CreateAsync(host.Client, host.Options, new DirectoryArtifactSource(ProjectArtifactSource.ForProject(release).Roots));
         var result = await runtime.RunAsync("Author local IaC source, do not deploy.");
-        Assert.True(result.Status == (registered && correctRoot ? SquadRunStatus.Completed : SquadRunStatus.Blocked), result.ResponseText);
+        Assert.True(result.Status == (registered && correctRoot ? SquadRunStatus.Completed : SquadRunStatus.Blocked),
+            result.ResponseText + "\n" + string.Join("\n", log.Messages));
         Assert.Equal(registered ? 1 : 0, calls);
         if (registered && correctRoot)
         {
@@ -420,12 +424,18 @@ public sealed class RuntimeContractTests
     private static void QueueFocused(RuntimeTestHost host, string stage, string[]? inputs = null) =>
         host.Client.Call("run_focused", new()
         {
-            ["stage"] = stage, ["inputPaths"] = inputs ?? [], ["requiresCouncil"] = false, ["includesAiRisk"] = false,
+            ["stage"] = stage,
+            ["inputPaths"] = inputs ?? [],
+            ["requiresCouncil"] = false,
+            ["includesAiRisk"] = false,
         });
 
     private static void QueueCompletion(RuntimeTestHost host) => host.Client.Call("complete_stage", new()
     {
-        ["summary"] = "Plan completed", ["verdict"] = "Completed", ["risk"] = "Low", ["blockingIssues"] = 0,
+        ["summary"] = "Plan completed",
+        ["verdict"] = "Completed",
+        ["risk"] = "Low",
+        ["blockingIssues"] = 0,
     });
 
     private static void VerifyHash(RuntimeTestHost host, string path, string sha) =>

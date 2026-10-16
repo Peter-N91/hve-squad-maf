@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="10.0.1" />
+    <PackageReference Include="coverlet.collector" Version="10.1.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\HveSquad.AgentFramework\HveSquad.AgentFramework.csproj" />
     <ProjectReference Include="..\..\samples\HveSquad.AgentFramework.Sample\HveSquad.AgentFramework.Sample.csproj" />
+    <ProjectReference Include="..\..\tools\HveSquad.ReleaseSync\HveSquad.ReleaseSync.csproj" />
   </ItemGroup>
 
   <ItemGroup>

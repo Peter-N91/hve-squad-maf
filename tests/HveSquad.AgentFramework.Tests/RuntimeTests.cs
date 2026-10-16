@@ -176,6 +176,7 @@ public sealed class RuntimeTests
     public async Task CouncilHighRiskStopsBeforeProduction()
     {
         using var host = new RuntimeTestHost();
+        host.Options.Council = new() { Roles = ["architect", "security", "cost-manager", "product-owner"] };
         host.QueuePipeline(council: true);
         host.QueueStage("researcher");
         host.QueueStage("lead");
@@ -328,26 +329,42 @@ public sealed class RuntimeTests
         host.Client.Steps.Enqueue((messages, options) =>
         {
             var prompt = (options?.Instructions ?? "") + string.Join("\n", messages.Select(m => m.Text));
-            Assert.Contains("SYNTHETIC_NEW_RULE", prompt, StringComparison.Ordinal);
-            Assert.Contains("SYNTHETIC_REFERENCE_gates-and-modes", prompt, StringComparison.Ordinal);
+            Assert.DoesNotContain("SYNTHETIC_NEW_RULE", prompt, StringComparison.Ordinal);
+            Assert.DoesNotContain("SYNTHETIC_REFERENCE_gates-and-modes", prompt, StringComparison.Ordinal);
             Assert.DoesNotContain("IRRELEVANT_RULE", prompt, StringComparison.Ordinal);
             Assert.DoesNotContain("SPECIALIST_BODY", prompt, StringComparison.Ordinal);
-            var load = Assert.Single(options!.Tools!.OfType<AIFunction>(), t => t.Name == AgentSkillsProvider.LoadSkillToolName);
+            var read = Assert.Single(options!.Tools!.OfType<AIFunction>(), t => t.Name == "read_instruction");
             Assert.DoesNotContain(options.Tools!, t => t.Name == AgentSkillsProvider.RunSkillScriptToolName);
+            return RuntimeTestHost.Function(read.Name, new() { ["fileName"] = "squad-new-rule.instructions.md" });
+        });
+        host.Client.Steps.Enqueue((messages, options) =>
+        {
+            Assert.Contains(messages.SelectMany(m => m.Contents).OfType<FunctionResultContent>(),
+                r => r.Result?.ToString()?.Contains("SYNTHETIC_NEW_RULE", StringComparison.Ordinal) == true);
+            var load = Assert.Single(options!.Tools!.OfType<AIFunction>(), t => t.Name == AgentSkillsProvider.LoadSkillToolName);
             var argument = load.JsonSchema.GetProperty("properties").EnumerateObject().First().Name;
-            return new ChatResponse(new ChatMessage(ChatRole.Assistant,
-                [new FunctionCallContent("load-squad", load.Name, new Dictionary<string, object?> { [argument] = "squad" })]));
+            return RuntimeTestHost.Function(load.Name, new() { [argument] = "squad" });
+        });
+        host.Client.Steps.Enqueue((messages, options) =>
+        {
+            Assert.Contains(messages.SelectMany(m => m.Contents).OfType<FunctionResultContent>(),
+                r => r.Result?.ToString()?.Contains("SYNTHETIC_SQUAD_SKILL", StringComparison.Ordinal) == true);
+            var read = Assert.Single(options!.Tools!.OfType<AIFunction>(), t => t.Name == AgentSkillsProvider.ReadSkillResourceToolName);
+            var arguments = read.JsonSchema.GetProperty("properties").EnumerateObject().ToDictionary(
+                p => p.Name, p => (object?)(p.Name.Contains("skill", StringComparison.OrdinalIgnoreCase)
+                    ? "squad" : "references/gates-and-modes.md"));
+            return RuntimeTestHost.Function(read.Name, arguments);
         });
         host.Client.Steps.Enqueue((messages, _) =>
         {
             Assert.Contains(messages.SelectMany(m => m.Contents).OfType<FunctionResultContent>(),
-                r => r.Result?.ToString()?.Contains("SYNTHETIC_SQUAD_SKILL", StringComparison.Ordinal) == true);
+                r => r.Result?.ToString()?.Contains("SYNTHETIC_REFERENCE_gates-and-modes", StringComparison.Ordinal) == true);
             return new ChatResponse(new ChatMessage(ChatRole.Assistant, "No dispatch in this binding test."));
         });
         using var runtime = await host.CreateAsync();
         var result = await runtime.RunAsync("Inspect capabilities.");
 
         Assert.True(result.Status == SquadRunStatus.Blocked, result.ResponseText + "\n" + string.Join("\n", log.Messages));
-        Assert.Equal(2, host.Client.Calls.Count);
+        Assert.Equal(4, host.Client.Calls.Count);
     }
 }

@@ -1,0 +1,57 @@
+# Reference only. Review, configure and commit it as .github/workflows/native-watch.yml.
+# The host repository must restore this package/sample, isolate and durably retain case state,
+# configure trusted settings separately from the event, and supply the actual model/permissions.
+# No pull_request_target, shell-expanded event prose, unattended push, merge or deployment.
+name: Native Squad Watch
+on:
+  issues:
+    types: [opened, labeled]
+  pull_request:
+    types: [opened, synchronize, labeled]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      request:
+        description: Descriptive task data, not runtime configuration
+        required: false
+      issue_number:
+        description: Optional positive issue number
+        required: false
+  schedule:
+    - cron: '0 6 * * 1'
+  push:
+    branches: ['release/**']
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+concurrency:
+  group: native-squad-watch-${{ github.repository }}-${{ github.event.issue.number || github.event.pull_request.number || github.ref || github.run_id }}
+  cancel-in-progress: false
+jobs:
+  watch:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: windows-latest
+    environment: native-squad-watch
+    steps:
+      # Supply your reviewed checkout/package-restore and durable case-storage binding here.
+      # Pin any Actions you add to their verified commit SHAs. Do not run untrusted PR code.
+      - name: Handle the authenticated platform event with the native host
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          WATCH_HOST_DLL: ${{ vars.WATCH_HOST_DLL }}
+          WATCH_CASE_ROOT: ${{ vars.WATCH_CASE_ROOT }}
+          WATCH_SETTINGS_PATH: ${{ vars.WATCH_SETTINGS_PATH }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($name in 'WATCH_HOST_DLL', 'WATCH_CASE_ROOT', 'WATCH_SETTINGS_PATH') {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
+              throw "Configure the reviewed native host, durable isolated case root and separate trusted settings."
+            }
+          }
+          & dotnet $env:WATCH_HOST_DLL --watch-event $env:GITHUB_EVENT_PATH --watch-settings $env:WATCH_SETTINGS_PATH --project $env:WATCH_CASE_ROOT
+          exit $LASTEXITCODE

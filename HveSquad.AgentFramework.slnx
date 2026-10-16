@@ -8,4 +8,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/HveSquad.AgentFramework.Tests/HveSquad.AgentFramework.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/HveSquad.ReleaseSync/HveSquad.ReleaseSync.csproj" />
+  </Folder>
 </Solution>

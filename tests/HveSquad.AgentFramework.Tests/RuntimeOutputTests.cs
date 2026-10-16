@@ -110,7 +110,7 @@ public sealed class RuntimeOutputTests
     public async Task DistinctDispatchesCannotSupersedeEachOthersOutputs(bool parentFirst, bool overlap)
     {
         using var host = new RuntimeTestHost();
-        RegisterSourceWriter(host);
+        var writes = RegisterSourceWriter(host);
         host.WriteCharter("developer", children: "Source Worker");
         host.Write("agents/source-worker.agent.md", "---\nname: Source Worker\nuser-invocable: false\n---\nSynthetic source worker.");
         QueueProduction(host);
@@ -131,11 +131,13 @@ public sealed class RuntimeOutputTests
         using var runtime = await host.CreateAsync();
         var result = await runtime.RunAsync("Implement a local source change.");
 
-        Assert.True(result.Status == (overlap ? SquadRunStatus.Failed : SquadRunStatus.Completed), result.ResponseText);
+        Assert.True(result.Status == (overlap ? SquadRunStatus.Blocked : SquadRunStatus.Completed), result.ResponseText);
         if (overlap)
         {
             Assert.Contains("Overlapping edits across distinct dispatches are unsupported", result.ResponseText, StringComparison.Ordinal);
             Assert.DoesNotContain(result.Evidence, e => e.Stage == "review");
+            Assert.Single(result.Effects!);
+            Assert.Single(writes);
         }
         else
         {
@@ -267,7 +269,7 @@ public sealed class RuntimeOutputTests
         {
             Assert.Equal(0, calls);
             Assert.Empty(result.Evidence);
-            Assert.Contains("Native skill-script execution/rendering is unavailable", result.ResponseText, StringComparison.Ordinal);
+            Assert.Contains("No renderer is registered", result.ResponseText, StringComparison.Ordinal);
         }
         else if (scenario == "markdown")
         {
@@ -303,7 +305,8 @@ public sealed class RuntimeOutputTests
             File.WriteAllText(absolute, content);
             writes.Add(path);
             return path;
-        }, "write_source"), "edit/project", ["developer"], SquadToolEffect.ProjectWrite, OutputPath));
+        }, "write_source"), "edit/project", ["developer"], SquadToolEffect.ProjectWrite, OutputPath,
+            ProjectWritePaths: arguments => [JsonSerializer.Deserialize<string>(JsonSerializer.Serialize(arguments["path"]))!]));
         return writes;
     }
 

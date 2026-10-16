@@ -13,8 +13,16 @@ internal sealed class ProjectFiles
     internal const int MaximumHostOutputBytes = 64 * 1024 * 1024;
     private readonly string _root;
     private readonly int _maximumCharacters;
+    private Dictionary<string, string>? _historicalPaths;
+    private static readonly string[] WriterFiles =
+    [
+        "state.json", "state.pending.json", "team.md", "routing.md", "decisions.md", "notifications.md",
+        "consumption.md", "consumption-rates.md", "native.lock", "federation.md", "meta-routing.md",
+        "federation.pending.json", "federation.run.lock",
+    ];
+    private static readonly string[] WriterDirectories = ["history", "returns", "payloads", "migrations", "memory"];
 
-    internal ProjectFiles(string root, int maximumCharacters)
+    internal ProjectFiles(string root, int maximumCharacters, string squadRoot = StateRoot)
     {
         _root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
         _maximumCharacters = maximumCharacters;
@@ -24,7 +32,33 @@ internal sealed class ProjectFiles
         }
 
         RejectLinks(_root);
+        SquadRoot = squadRoot.Replace('\\', '/').TrimEnd('/');
+        _ = Resolve(SquadRoot);
+        if (IsWithin(SquadRoot, ".git") || IsWithin(SquadRoot, ".github") || IsWithin(SquadRoot, ".agents") ||
+            IsWithin(StateRoot, SquadRoot) && SquadRoot != StateRoot ||
+            SquadRoot == StateRoot + "/members" ||
+            IsWithin(SquadRoot, StateRoot) && SquadRoot != StateRoot &&
+            !IsWithin(SquadRoot, StateRoot + "/members"))
+        {
+            throw new InvalidOperationException("SquadRoot must be a contained, isolated native state directory.");
+        }
+
+        if (IsWithin(SquadRoot, StateRoot + "/members"))
+        {
+            var name = SquadRoot[(StateRoot.Length + "/members/".Length)..];
+            if (!System.Text.RegularExpressions.Regex.IsMatch(name, "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)))
+            {
+                throw new InvalidOperationException("A member root requires one lower-kebab-case member name.");
+            }
+
+            IsMemberRoot = true;
+        }
     }
+
+    internal string SquadRoot { get; }
+    internal bool IsMemberRoot { get; }
+    internal string ProjectRoot => _root;
 
     internal string Resolve(string relativePath, bool allowRoot = false)
     {
@@ -40,6 +74,10 @@ internal sealed class ProjectFiles
             throw new InvalidOperationException("Traversal and ambiguous path components are forbidden.");
         }
 
+        if (_historicalPaths?.TryGetValue(string.Join('/', parts), out var relocated) == true)
+        {
+            parts = relocated.Split('/');
+        }
         var path = Path.GetFullPath(Path.Combine(_root, Path.Combine(parts)));
         if ((!allowRoot || !path.Equals(_root, PathComparison)) &&
             !path.StartsWith(_root + Path.DirectorySeparatorChar, PathComparison))
@@ -50,6 +88,44 @@ internal sealed class ProjectFiles
         RejectLinks(path);
         return path;
     }
+
+    internal void BindHistoricalPaths(NativeRelocation? relocation)
+    {
+        _historicalPaths = null;
+        if (relocation is null)
+        {
+            return;
+        }
+        if (!IsMemberRoot || relocation.SourceRoot != StateRoot || relocation.TargetRoot != SquadRoot ||
+            !Guid.TryParseExact(relocation.OperationId, "N", out _) ||
+            relocation.Files.Count == 0 || relocation.Files.Count > FederationPersistence.MaximumFiles ||
+            relocation.Seal != HumanActions.Hash(relocation with { Seal = null }) ||
+            relocation.OriginalStatePath != SquadRoot + "/migrations/federation-" + relocation.OperationId + "/original-state.json" ||
+            HashFile(relocation.OriginalStatePath) != relocation.OriginalStateSha256)
+        {
+            throw new InvalidDataException("history-integrity: the native relocation lost its exact original-state binding.");
+        }
+        var paths = new Dictionary<string, string>(OperatingSystem.IsWindows()
+            ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        foreach (var file in relocation.Files)
+        {
+            _ = Resolve(file.Source);
+            _ = Resolve(file.Destination);
+            if (!file.Source.StartsWith(".copilot-tracking/", StringComparison.Ordinal) ||
+                !IsWithin(file.Destination, SquadRoot) || file.Source.Contains('\\', StringComparison.Ordinal) ||
+                file.Destination.Contains('\\', StringComparison.Ordinal) ||
+                file.Destination != FederationPersistence.RebaseRoot(file.Source, SquadRoot) ||
+                !HumanActions.IsHash(file.Sha256) || file.Bytes < 0 || file.Bytes > MaximumHostOutputBytes ||
+                !paths.TryAdd(file.Source, file.Destination))
+            {
+                throw new InvalidDataException("history-integrity: a historical file mapping escaped or duplicated its member scope.");
+            }
+        }
+        _historicalPaths = paths;
+    }
+
+    internal bool SameEvidencePath(string actual, string expected) =>
+        Resolve(actual).Equals(Resolve(expected), PathComparison);
 
     internal static StringComparison PathComparison =>
         OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
@@ -63,13 +139,62 @@ internal sealed class ProjectFiles
         var normalized = root.Replace('\\', '/').TrimEnd('/')
             .Replace("<date>", DateTime.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal);
         _ = Resolve(normalized);
-        if (IsWithin(normalized, StateRoot) || IsWithin(StateRoot, normalized) ||
+        if (IsProtectedStatePath(normalized) || IsWithin(SquadRoot, normalized) ||
             IsWithin(normalized, ".git") || normalized.Contains('(', StringComparison.Ordinal))
         {
             throw new InvalidOperationException($"'{root}' is not an isolated role deliverable root.");
         }
 
+        if (IsMemberRoot && !IsWithin(normalized, SquadRoot) &&
+            !IsWithin(normalized, "docs") && !IsWithin(normalized, "outputs"))
+        {
+            throw new InvalidOperationException($"'{root}' escapes the member's deliverable scope.");
+        }
+
         return normalized;
+    }
+
+    internal bool IsProtectedStatePath(string relativePath)
+    {
+        var path = relativePath.Replace('\\', '/').TrimEnd('/');
+        foreach (var root in new[] { StateRoot, SquadRoot }.Distinct(StringComparer.Ordinal))
+        {
+            if (!IsWithin(path, root))
+            {
+                continue;
+            }
+
+            var child = path.Length == root.Length ? "" : path[(root.Length + 1)..];
+            if (child.Length == 0 || WriterFiles.Any(file => child.Equals(file, PathComparison)) ||
+                WriterDirectories.Any(directory => IsWithin(child, directory)))
+            {
+                return true;
+            }
+
+            if (root == StateRoot && child.StartsWith("members/", PathComparison))
+            {
+                var parts = child.Split('/');
+                if (parts.Length < 3 || WriterFiles.Any(file => parts[2].Equals(file, PathComparison)) ||
+                    WriterDirectories.Any(directory => parts[2].Equals(directory, PathComparison)))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    internal void CheckAgentRead(string relativePath, IEnumerable<string> explicitInputs)
+    {
+        _ = Resolve(relativePath);
+        var path = relativePath.Replace('\\', '/').TrimEnd('/');
+        if (IsMemberRoot && !IsWithin(path, SquadRoot) &&
+            !explicitInputs.Any(input => input.Replace('\\', '/').Equals(path, PathComparison)))
+        {
+            throw new InvalidOperationException(
+                "Member reads are limited to their own root and explicit host-approved read-only input paths.");
+        }
     }
 
     internal string Read(string relativePath, int? maximumCharacters = null)
@@ -127,6 +252,38 @@ internal sealed class ProjectFiles
         }
 
         return Convert.ToHexString(hash.GetHashAndReset());
+    }
+
+    internal byte[] ReadBytes(string relativePath)
+    {
+        using var stream = new FileStream(Resolve(relativePath), FileMode.Open, FileAccess.Read, FileShare.Read);
+        if (stream.Length > MaximumHostOutputBytes)
+        {
+            throw new InvalidDataException("Protected evidence exceeds the 64 MiB byte limit.");
+        }
+
+        var bytes = new byte[checked((int)stream.Length)];
+        stream.ReadExactly(bytes);
+        if (stream.ReadByte() != -1)
+        {
+            throw new InvalidDataException("Protected evidence grew during verification.");
+        }
+
+        return bytes;
+    }
+
+    internal void AppendBytes(string relativePath, ReadOnlySpan<byte> bytes)
+    {
+        var path = Resolve(relativePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        RejectLinks(path);
+        using var stream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.Read);
+        if (stream.Length + bytes.Length > MaximumHostOutputBytes)
+        {
+            throw new InvalidDataException("Protected history exceeds the 64 MiB byte limit.");
+        }
+        stream.Write(bytes);
+        stream.Flush(flushToDisk: true);
     }
 
     internal void Write(string relativePath, string text, bool append = false, int? maximumCharacters = null)

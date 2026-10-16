@@ -19,8 +19,8 @@ public sealed partial class ReleaseArtifactSource : SquadArtifactSource
     public const string RepositoryName = "hve-squad";
     public const string Repository = RepositoryOwner + "/" + RepositoryName;
 
-    /// <summary>A known compatible release used by tests and examples, not a latest-version marker.</summary>
-    public const string TestedReleaseTag = "v0.16.2";
+    /// <summary>API mirror of the canonical production baseline, validated by its embedded manifest.</summary>
+    public const string TestedReleaseTag = "v0.18.1";
 
     private const string GitHubApiRoot = "https://api.github.com";
     private const int MaximumResponseCharacters = 64 * 1024;
@@ -34,7 +34,8 @@ public sealed partial class ReleaseArtifactSource : SquadArtifactSource
     private Task<SquadArtifactRoots>? _resolutionTask;
 
     /// <param name="version">
-    /// Stable semantic-version tag to acquire. Null resolves GitHub's latest published release.
+    /// Stable semantic-version tag to acquire. Defaults to the canonical production baseline.
+    /// Explicit null inspects GitHub's latest published release; it does not promote that candidate.
     /// </param>
     /// <param name="target">APM target used by the acquisition source.</param>
     /// <param name="httpClient">
@@ -44,7 +45,7 @@ public sealed partial class ReleaseArtifactSource : SquadArtifactSource
     /// Optional factory receiving the exact commit-pinned package spec and target.
     /// </param>
     public ReleaseArtifactSource(
-        string? version = null,
+        string? version = TestedReleaseTag,
         string target = "copilot",
         HttpClient? httpClient = null,
         SquadArtifactAcquisitionFactory? acquisitionFactory = null)
@@ -121,6 +122,24 @@ public sealed partial class ReleaseArtifactSource : SquadArtifactSource
 
     private async Task<SquadArtifactRoots> ResolveCoreAsync(CancellationToken cancellationToken)
     {
+        var release = await ResolveReleaseAsync(cancellationToken).ConfigureAwait(false);
+        var packageSpec = $"{Repository}#{release.CommitSha}";
+        var acquisitionSource = _acquisitionFactory(packageSpec, _target)
+            ?? throw new InvalidOperationException("The acquisition factory returned null.");
+        var roots = await acquisitionSource.ResolveAsync(cancellationToken).ConfigureAwait(false);
+        return roots with
+        {
+            Origin = $"HVE Squad release '{release.Tag}' at commit '{release.CommitSha}'; {roots.Origin}",
+            Release = release,
+        };
+    }
+
+    /// <summary>Reads fresh published stable metadata without acquiring artifacts or changing the supported pin.</summary>
+    /// <param name="cancellationToken">Cancellation for the two bounded metadata requests.</param>
+    /// <returns>The actual published tag and exact commit, never a branch or prerelease.</returns>
+    /// <exception cref="SquadArtifactsNotFoundException">Metadata is unavailable, invalid, unpublished or a moved supported tag.</exception>
+    public async ValueTask<SquadRelease> ResolveReleaseAsync(CancellationToken cancellationToken = default)
+    {
         var releasePath = _version is null
             ? $"/repos/{Repository}/releases/latest"
             : $"/repos/{Repository}/releases/tags/{Uri.EscapeDataString(_version)}";
@@ -131,7 +150,7 @@ public sealed partial class ReleaseArtifactSource : SquadArtifactSource
         if (!StableVersionTagPattern().IsMatch(tag))
         {
             throw new SquadArtifactsNotFoundException(
-                $"GitHub release '{tag}' is not a stable semantic-version release.");
+                "GitHub returned a release tag that is not a stable semantic-version identity.");
         }
 
         if (_version is not null && !string.Equals(tag, _version, StringComparison.Ordinal))
@@ -150,27 +169,36 @@ public sealed partial class ReleaseArtifactSource : SquadArtifactSource
             throw new SquadArtifactsNotFoundException($"GitHub release '{tag}' is a prerelease.");
         }
 
+        var published = GetRequiredString(releaseRoot, "published_at", "release");
+        if (!DateTimeOffset.TryParse(published, CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal, out _))
+        {
+            throw new SquadArtifactsNotFoundException("GitHub release has an invalid publication timestamp.");
+        }
+
         var commitPath = $"/repos/{Repository}/commits/{Uri.EscapeDataString(tag)}";
         using var commit = await GetJsonAsync(commitPath, "release commit", cancellationToken).ConfigureAwait(false);
         var commitSha = GetRequiredString(commit.RootElement, "sha", "release commit");
         if (!CommitShaPattern().IsMatch(commitSha))
         {
             throw new SquadArtifactsNotFoundException(
-                $"GitHub returned invalid commit SHA '{commitSha}' for release '{tag}'.");
+                $"GitHub returned an invalid commit SHA for release '{tag}'.");
         }
 
-        var packageSpec = $"{Repository}#{commitSha}";
-        var acquisitionSource = _acquisitionFactory(packageSpec, _target)
-            ?? throw new InvalidOperationException("The acquisition factory returned null.");
-        var roots = await acquisitionSource.ResolveAsync(cancellationToken).ConfigureAwait(false);
-        var provenance = new SquadRelease(tag, commitSha);
-
-        return roots with
+        var supported = SupportedSquadRelease.Current;
+        if (tag.Equals(supported.Tag, StringComparison.Ordinal) &&
+            !commitSha.Equals(supported.CommitSha, StringComparison.OrdinalIgnoreCase))
         {
-            Origin = $"HVE Squad release '{tag}' at commit '{commitSha}'; {roots.Origin}",
-            Release = provenance,
-        };
+            throw new SquadArtifactsNotFoundException(
+                $"Official release '{tag}' moved from verified commit '{supported.CommitSha}' to " +
+                $"'{commitSha}'. Review the compatibility manifest; no acquisition or promotion occurred.");
+        }
+
+        return new(tag, commitSha.ToLowerInvariant());
     }
+
+    internal static bool IsStableTag(string value) => StableVersionTagPattern().IsMatch(value);
+    internal static bool IsCommit(string value) => CommitShaPattern().IsMatch(value);
 
     private async Task<JsonDocument> GetJsonAsync(
         string path,
@@ -215,8 +243,7 @@ public sealed partial class ReleaseArtifactSource : SquadArtifactSource
                 var rateLimit = RateLimitDiagnostic(response);
                 throw new SquadArtifactsNotFoundException(
                     $"GitHub API request for {resourceName} failed with HTTP {(int)response.StatusCode} " +
-                    $"({response.ReasonPhrase}).{rateLimit} No fallback source was used. " +
-                    $"{ExtractApiMessage(body)}");
+                    $".{rateLimit} No fallback source was used. Check API availability and host permissions.");
             }
 
             try
@@ -291,11 +318,14 @@ public sealed partial class ReleaseArtifactSource : SquadArtifactSource
             return string.Empty;
         }
 
-        var remaining = HeaderValue(response, "X-RateLimit-Remaining") ?? "unknown";
+        var remaining = int.TryParse(HeaderValue(response, "X-RateLimit-Remaining"),
+            NumberStyles.None, CultureInfo.InvariantCulture, out var count) && count >= 0
+            ? count.ToString(CultureInfo.InvariantCulture) : "unknown";
         var resetValue = HeaderValue(response, "X-RateLimit-Reset");
-        var reset = long.TryParse(resetValue, NumberStyles.None, CultureInfo.InvariantCulture, out var unixTime)
+        var reset = long.TryParse(resetValue, NumberStyles.None, CultureInfo.InvariantCulture, out var unixTime) &&
+            unixTime is >= 0 and <= 253402300799
             ? DateTimeOffset.FromUnixTimeSeconds(unixTime).ToString("u", CultureInfo.InvariantCulture)
-            : resetValue ?? "unknown";
+            : "unknown";
 
         return $" GitHub rate limit remaining: {remaining}; reset: {reset}.";
     }
@@ -303,24 +333,6 @@ public sealed partial class ReleaseArtifactSource : SquadArtifactSource
     private static string? HeaderValue(HttpResponseMessage response, string name)
     {
         return response.Headers.TryGetValues(name, out var values) ? values.FirstOrDefault() : null;
-    }
-
-    private static string ExtractApiMessage(string body)
-    {
-        try
-        {
-            using var json = JsonDocument.Parse(body);
-            if (json.RootElement.TryGetProperty("message", out var message)
-                && message.ValueKind == JsonValueKind.String)
-            {
-                return message.GetString() ?? string.Empty;
-            }
-        }
-        catch (JsonException)
-        {
-        }
-
-        return string.Empty;
     }
 
     private static ApmArtifactSource CreateApmSource(string packageSpec, string target)
