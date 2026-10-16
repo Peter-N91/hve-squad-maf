@@ -118,8 +118,8 @@ notification or model statement cannot approve them.
 The canonical release identity and all 279 numbered assertion dispositions (including 15 letter-suffixed subassertions) live in
 [the compatibility manifest](compatibility/hve-squad-release.json), which is embedded
 in the package and exposed through `SupportedSquadRelease.Current`. Its conformance
-status is separate from its release identity: `in-progress` is not a full-parity
-claim. An official baseline tag that moves to another commit is rejected before
+status is separate from its release identity: `verified` covers mechanical native
+conformance, not live-model quality or product deployment readiness. An official baseline tag that moves to another commit is rejected before
 acquisition. Explicit latest/candidate inspection never promotes the manifest or
 replaces release-bound existing state.
 

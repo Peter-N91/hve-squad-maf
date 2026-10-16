@@ -28,7 +28,7 @@ public sealed class SupportedSquadReleaseTests
             Assert.NotEmpty(a.Adaptation);
         });
         Assert.Equal(7, manifest.Assertions.Count(a => a.Disposition == SquadAssertionDisposition.SemanticComparison));
-        Assert.Equal("in-progress", manifest.ConformanceStatus);
+        Assert.Equal("verified", manifest.ConformanceStatus);
         Assert.Equal("18f5ac75a1556e49f1e90647a4816d17499e1d7f", manifest.HveCoreCommitSha);
     }
 

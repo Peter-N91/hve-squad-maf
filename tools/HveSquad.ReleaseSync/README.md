@@ -92,8 +92,8 @@ not that these blockers passed.
    the package's default. Existing release-bound cases still require their original pin or an explicit
    verified migration/fresh case. A PR is not a release, deployment or IndustryIQ quality guarantee.
 
-The current manifest remains `in-progress` until full conformance/package/platform acceptance is
-recorded. A candidate workflow correctly refuses promotion while that evidence is incomplete.
+The manifest records `verified` only when full conformance/package/platform acceptance is
+complete. A candidate workflow refuses promotion whenever a candidate's mechanical evidence is incomplete.
 
 To validate a saved actual fixture report locally without pretending a dirty working tree is a
 verified candidate head, use `verify-evidence`. This checks only the identity-bound observation/TRX

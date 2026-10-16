@@ -93,7 +93,7 @@ internal sealed class ReleaseEvaluation(HttpClient client, SquadArtifactAcquisit
         {
             blockers.Add("candidate-pin-not-reviewed: update the supported manifest and API mirror only in the review branch");
         }
-        if (supported.ConformanceStatus != "verified")
+        if (supported.ConformanceStatus != "verified" || !supported.Matches(candidate))
         {
             blockers.Add("mechanical-conformance-unverified: the canonical inventory still has incomplete acceptance evidence");
         }

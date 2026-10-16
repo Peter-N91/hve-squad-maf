@@ -38,6 +38,8 @@ jobs:
         env:
           EXPECTED_HEAD: ${{ github.sha }}
           HVE_SQUAD_RELEASE_GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_APM_PAT_PETER_N91: ${{ github.token }}
+          APM_ALLOW_PROTOCOL_FALLBACK: '1'
         run: |
           $ErrorActionPreference = 'Stop'
           $Tool = [IO.Path]::Combine('tools', 'HveSquad.ReleaseSync')

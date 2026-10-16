@@ -6,7 +6,7 @@
   "hveCoreRepository": "microsoft/hve-core",
   "hveCoreCommitSha": "18f5ac75a1556e49f1e90647a4816d17499e1d7f",
   "behaviorContractPath": "tests/squad-behavior-contract.md",
-  "conformanceStatus": "in-progress",
+  "conformanceStatus": "verified",
   "artifactContract": "single-plan",
   "legacyAdvisoryRelease": "v0.16.2",
   "roleEffects": {

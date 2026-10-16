@@ -323,6 +323,14 @@ public sealed partial class ApmArtifactSource : SquadArtifactSource
                 $"apm install '{request.PackageSpec}' failed with exit code {process.ExitCode}. " +
                 $"{FirstDiagnostic(error) ?? FirstDiagnostic(output) ?? "No diagnostic output."}");
         }
+
+        if (ArtifactDirectories.Any(directory => ResolveArtifactDirectory(request.WorkingDirectory, directory) is null))
+        {
+            var diagnostic = FirstDiagnostic(error) ?? FirstDiagnostic(output);
+            throw new SquadArtifactsNotFoundException(
+                $"apm install completed but did not produce agents, instructions, and skills under '{request.WorkingDirectory}'." +
+                (diagnostic is null ? string.Empty : $" {diagnostic}"));
+        }
     }
 
     internal static void ConfigureInstallProcess(ProcessStartInfo startInfo, ApmInstallRequest request)
