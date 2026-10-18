@@ -1076,6 +1076,13 @@ uploads. Their report artifacts are retained regardless. See
 [workflow activation and maintenance](docs/maintaining.html#workflows) for permissions,
 feature availability, severity policy and publishing boundaries.
 
+The documentation build derives the current MAF sidebar version and the prerequisite
+package versions in both languages from the library project. The checked-in HTML
+retains readable version labels for direct previews; generated pages resolve those
+labels at build time without rewriting historical prose or code examples. Library
+dependency changes also trigger the documentation workflow, so dependency-only updates
+refresh the deployed site. Run `npm run docs:test` and `npm run docs:build` locally.
+
 Configuration and dependency-injection packages are grouped so library, sample and
 test projects update together rather than introducing NuGet downgrades. Release
 acceptance runs once per pull-request update through the candidate workflow;

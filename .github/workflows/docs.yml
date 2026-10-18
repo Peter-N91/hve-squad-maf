@@ -11,6 +11,7 @@ on:
       - package.json
       - package-lock.json
       - eleventy.config.js
+      - src/HveSquad.AgentFramework/HveSquad.AgentFramework.csproj
       - .github/workflows/docs.yml
   pull_request:
     paths:
@@ -21,6 +22,7 @@ on:
       - package.json
       - package-lock.json
       - eleventy.config.js
+      - src/HveSquad.AgentFramework/HveSquad.AgentFramework.csproj
       - .github/workflows/docs.yml
   workflow_dispatch:
 

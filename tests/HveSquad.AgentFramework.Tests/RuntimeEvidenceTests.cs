@@ -319,6 +319,7 @@ public sealed class RuntimeEvidenceTests
 
         Assert.True(result.Status == SquadRunStatus.Blocked, result.ResponseText);
         Assert.Contains("another active dispatch", result.ResponseText, StringComparison.Ordinal);
+        Assert.Equal(1, council.AllocationLookups);
         Assert.Equal(1, council.SiblingReadAttempts);
         Assert.DoesNotContain(result.Evidence, e => e.Stage == "produce");
         Assert.Equal(0, host.Writes);
@@ -752,10 +753,12 @@ public sealed class RuntimeEvidenceTests
     private sealed class ConcurrentCouncil : IDisposable
     {
         private readonly ConcurrentBag<DelayedClient> _clients = [];
+        private readonly TaskCompletionSource<string> _architectAllocation = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly Probe _probe;
         private readonly TaskCompletionSource _pendingReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly TaskCompletionSource _siblingReadFinished = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private int _architectSelections;
+        private int _allocationLookups;
         private int _siblingReadAttempts;
 
         internal ConcurrentCouncil(RuntimeTestHost host, int requiredConcurrency, bool attackSibling = false,
@@ -807,7 +810,17 @@ public sealed class RuntimeEvidenceTests
                 }
                 if (!worker && attackSibling && role.Role == "architect")
                 {
-                    wait = token => _siblingReadFinished.Task.WaitAsync(TimeSpan.FromSeconds(15), token);
+                    beforeFirstResponse = async (options, token) =>
+                    {
+                        var list = Assert.Single(options!.Tools!.OfType<AIFunction>(), tool => tool.Name == "list_artifacts");
+                        var manifest = Assert.IsType<JsonElement>(await list.InvokeAsync(new AIFunctionArguments(), token));
+                        using var allocations = JsonDocument.Parse(manifest.GetString()!);
+                        var primary = allocations.RootElement.GetProperty("Outputs").EnumerateArray()
+                            .Single(output => output.GetProperty("Name").GetString() == "primary");
+                        Interlocked.Increment(ref _allocationLookups);
+                        _architectAllocation.TrySetResult(primary.GetProperty("Path").GetString()!);
+                        await _siblingReadFinished.Task.WaitAsync(TimeSpan.FromSeconds(15), token);
+                    };
                 }
                 if (!worker && attackSibling && role.Role == "security")
                 {
@@ -815,11 +828,7 @@ public sealed class RuntimeEvidenceTests
                     {
                         try
                         {
-                            using var state = JsonDocument.Parse(File.ReadAllText(StatePath(host)));
-                            var peer = state.RootElement.GetProperty("Checkpoint").GetProperty("DispatchStack").EnumerateArray()
-                                .Single(d => d.GetProperty("Role").GetString() == "architect" &&
-                                    d.GetProperty("ParentDispatchId").ValueKind == JsonValueKind.Null);
-                            var path = peer.GetProperty("Allocations")[0].GetProperty("Path").GetString();
+                            var path = await _architectAllocation.Task.WaitAsync(TimeSpan.FromSeconds(15), token);
                             var read = Assert.Single(options!.Tools!.OfType<AIFunction>(), tool => tool.Name == "project_read");
                             Interlocked.Increment(ref _siblingReadAttempts);
                             _ = await read.InvokeAsync(new AIFunctionArguments { ["path"] = path }, token);
@@ -864,6 +873,7 @@ public sealed class RuntimeEvidenceTests
 
         internal int Peak => _probe.Peak;
         internal int Calls => _clients.Sum(client => client.Calls);
+        internal int AllocationLookups => Volatile.Read(ref _allocationLookups);
         internal int SiblingReadAttempts => Volatile.Read(ref _siblingReadAttempts);
 
         public void Dispose()

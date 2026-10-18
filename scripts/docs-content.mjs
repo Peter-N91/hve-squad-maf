@@ -46,11 +46,35 @@ export function readLocales() {
   return locales;
 }
 
+export function applyPackageVersions($, project) {
+  const version = name => {
+    const references = [...project.matchAll(/<PackageReference\s+Include="([^"]+)"\s+Version="([^"]+)"/g)]
+      .filter(match => match[1] === name);
+    if (references.length !== 1 || !/^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(references[0][2])) {
+      throw new Error(`Expected exactly one explicit package version for ${name}.`);
+    }
+    return references[0][2];
+  };
+  const maf = version("Microsoft.Agents.AI");
+  const extensions = version("Microsoft.Extensions.AI");
+  $(".sidebar-bottom p").first().text((_, text) =>
+    text.replace(/\bMAF \d+\.\d+\b/g, `MAF ${maf.split(".").slice(0, 2).join(".")}`));
+  $("#prerequisites td").each((_, element) => {
+    const cell = $(element);
+    if (cell.children().length) return;
+    cell.text(cell.text()
+      .replace(/\bMicrosoft\.Agents\.AI \d+\.\d+\.\d+(?:-[\w.-]+)?/g, `Microsoft.Agents.AI ${maf}`)
+      .replace(/\bMicrosoft\.Extensions\.AI \d+\.\d+\.\d+(?:-[\w.-]+)?/g, `Microsoft.Extensions.AI ${extensions}`));
+  });
+}
+
 export function readSource(slug, prefix = "") {
   const sourcePath = `docs/${prefix}${slug}.html`;
   const raw = readFileSync(resolve(repositoryRoot, sourcePath), "utf8");
   const $ = load(raw);
   if ($("main").length !== 1) throw new Error(`${sourcePath}: expected exactly one main element.`);
+  const project = readFileSync(resolve(repositoryRoot, "src/HveSquad.AgentFramework/HveSquad.AgentFramework.csproj"), "utf8");
+  applyPackageVersions($, project);
   return { $, raw, sourcePath };
 }
 
