@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { load } from "cheerio";
-import { enhanceContent, headingIds, readLocales, readSource, pageOrder } from "../../scripts/docs-content.mjs";
+import { applyPackageVersions, enhanceContent, headingIds, readLocales, readSource, pageOrder } from "../../scripts/docs-content.mjs";
 
 test("every declared language has the complete navigation and UI contract", () => {
   const locales = readLocales();
@@ -63,6 +63,33 @@ test("nested source navigation and illustrated homepage content remain intact", 
   assert.equal($(".source-toc").text(), "Publication sequencePublish");
 });
 
+test("dependency updates refresh localized version labels without rewriting examples or historical prose", () => {
+  const project = '<Project><PackageReference Include="Microsoft.Agents.AI" Version="1.24.0" /><PackageReference Include="Microsoft.Extensions.AI" Version="10.11.0" /></Project>';
+  for (const prefix of ["", "fr/"]) {
+    for (const slug of pageOrder) {
+      const { $ } = readSource(slug, prefix);
+      const before = $("main pre").toArray().map(element => $(element).text());
+      $("main").append("<p id='historical-version'>Microsoft.Agents.AI 1.23.0</p>");
+      applyPackageVersions($, project);
+      assert($(".sidebar-bottom").text().includes("MAF 1.24"));
+      assert.equal($("#historical-version").text(), "Microsoft.Agents.AI 1.23.0");
+      assert.deepEqual($("main pre").toArray().map(element => $(element).text()), before);
+      if (slug === "getting-started") {
+        assert($("#prerequisites").text().includes("Microsoft.Agents.AI 1.24.0"));
+        assert($("#prerequisites").text().includes("Microsoft.Extensions.AI 10.11.0"));
+      }
+    }
+  }
+});
+
+test("missing or ambiguous package versions fail documentation generation explicitly", () => {
+  const $ = load("<main></main>");
+  assert.throws(() => applyPackageVersions($, "<Project />"), /explicit package version for Microsoft.Agents.AI/);
+  const reference = '<PackageReference Include="Microsoft.Agents.AI" Version="1.24.0" />';
+  assert.throws(() => applyPackageVersions($, reference + reference), /exactly one explicit package version/);
+  assert.throws(() => applyPackageVersions($, reference), /explicit package version for Microsoft.Extensions.AI/);
+});
+
 test("both languages describe the actual package versions and release-pinned public examples", () => {
   const project = readFileSync(new URL("../../src/HveSquad.AgentFramework/HveSquad.AgentFramework.csproj", import.meta.url), "utf8");
   const maf = project.match(/Include="Microsoft.Agents.AI" Version="([^"]+)"/)[1];
@@ -76,6 +103,7 @@ test("both languages describe the actual package versions and release-pinned pub
       assert(!$("main").text().includes("1.17.0"));
     }
     const setup = readSource("getting-started", prefix).$;
+    assert(setup("#prerequisites").text().includes(`Microsoft.Agents.AI ${maf}`));
     assert(setup("main").text().includes(`Microsoft.Extensions.AI ${extensions}`));
     const examples = readSource("use-cases", prefix).$;
     assert(examples("pre").text().includes(`Version = "${manifest.tag}"`));
