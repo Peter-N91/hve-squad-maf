@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "producer": "hve-squad-release-sync/v1",
+  "baseline": {
+    "tag": "v0.18.1",
+    "commitSha": "4c1f140f12f17abd3f200baa3afcb6d4c84bb6da"
+  },
+  "release": {
+    "tag": "v0.19.1",
+    "commitSha": "0b86e59da11cf3f82e08f77e5d7e610fcfe59837"
+  },
+  "hveCoreCommitSha": "9b178da4c9a6cfa7edc4151103740b2d306d1360",
+  "contractFingerprint": "48d9a90a61c0375f78d689a1d33d57553dcb7684b647be6a3257d8873d0e5cdf",
+  "evaluationHead": "13ceadaf6767be6317861d80b11bb4c09c44c4e0",
+  "driftSummary": {
+    "assertion": 181,
+    "dependency": 277,
+    "mode": 7,
+    "resource": 366,
+    "role": 11,
+    "schema": 2
+  },
+  "promotionBlockers": [
+    "unknown-contract-drift: review adapter/schema/resource/assertion changes and update their executable evidence",
+    "unmapped-assertions: every added, removed or renamed numbered assertion requires reviewed ownership and evidence",
+    "candidate-pin-not-reviewed: update the supported manifest and API mirror only in the review branch",
+    "mechanical-conformance-unverified: the canonical inventory still has incomplete acceptance evidence"
+  ],
+  "observationStatus": "not observed",
+  "answerStatus": "not judged"
+}
