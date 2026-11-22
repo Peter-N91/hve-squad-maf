@@ -7,7 +7,7 @@ application so end users can do evidence-backed business work: prepare an RFP
 response, compare customer solution options, or draft a reviewed knowledge article.
 Built on native Microsoft Agent Framework, this is a library intended for NuGet
 consumption, not a Copilot development plugin or an application-building assistant.
-Version **0.2.0-preview.1 is unpublished**; use source or a local feed today.
+Version **0.2.0 is a stable, unpublished package candidate**; use source or a local feed until its publication is verified.
 
 It runs real MAF agents using released HVE charters, skills, and instructions.
 The supported app-facing workflow is evidence-gated work with research, planning,
@@ -384,7 +384,7 @@ is the PRD Quality Reviewer, not a generic business-document validator. Evaluate
 that fit and surface blockers rather than assuming arbitrary RFPs will pass.
 Commodity ticket routing and simple summaries may need only plain MAF; long-running
 business agents still need product-specific authorization, data isolation, model-quality
-evaluation and lifecycle integration beyond this preview.
+evaluation and lifecycle integration beyond this package candidate.
 
 The native Scribe is a deterministic persistence service, not a model agent. It owns
 the state directory and writes evidence only for actual specialist dispatches. Its

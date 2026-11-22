@@ -92,12 +92,16 @@ test("missing or ambiguous package versions fail documentation generation explic
 
 test("both languages describe the actual package versions and release-pinned public examples", () => {
   const project = readFileSync(new URL("../../src/HveSquad.AgentFramework/HveSquad.AgentFramework.csproj", import.meta.url), "utf8");
+  const library = project.match(/<Version>([^<]+)<\/Version>/)[1];
   const maf = project.match(/Include="Microsoft.Agents.AI" Version="([^"]+)"/)[1];
   const extensions = project.match(/Include="Microsoft.Extensions.AI" Version="([^"]+)"/)[1];
   const manifest = JSON.parse(readFileSync(new URL("../../compatibility/hve-squad-release.json", import.meta.url), "utf8"));
+  assert.match(library, /^\d+\.\d+\.\d+$/);
   for (const prefix of ["", "fr/"]) {
     for (const slug of pageOrder) {
-      const { $ } = readSource(slug, prefix);
+      const { $, raw } = readSource(slug, prefix);
+      assert($(".sidebar-bottom").text().includes(library));
+      assert(!raw.includes(`${library}-preview`));
       assert($(".sidebar-bottom").text().includes(`MAF ${maf.split(".").slice(0, 2).join(".")}`));
       assert(!$("main").text().includes("10.8.3"));
       assert(!$("main").text().includes("1.17.0"));
@@ -110,6 +114,8 @@ test("both languages describe the actual package versions and release-pinned pub
     assert(setup("#package-verification").length === 1);
     assert(setup("pre").text().includes("scripts\\Test-PackageConsumer.ps1"));
   }
+  const consumer = readFileSync(new URL("../../samples/HveSquad.PackageConsumer/HveSquad.PackageConsumer.csproj", import.meta.url), "utf8");
+  assert(consumer.includes(`<HveSquadPackageVersion Condition="'$(HveSquadPackageVersion)' == ''">${library}</HveSquadPackageVersion>`));
 });
 
 test("native helper and reviewed-upgrade commands keep their distinct permission boundaries", () => {

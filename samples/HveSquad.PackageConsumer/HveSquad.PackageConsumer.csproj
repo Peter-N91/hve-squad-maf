@@ -8,7 +8,7 @@
     <IsPackable>false</IsPackable>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <HveSquadPackageVersion Condition="'$(HveSquadPackageVersion)' == ''">0.2.0-preview.1</HveSquadPackageVersion>
+    <HveSquadPackageVersion Condition="'$(HveSquadPackageVersion)' == ''">0.2.0</HveSquadPackageVersion>
   </PropertyGroup>
 
   <ItemGroup>
