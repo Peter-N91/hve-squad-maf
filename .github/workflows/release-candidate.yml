@@ -40,6 +40,19 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      - name: Require a stable, aligned package identity
+        shell: pwsh
+        run: |
+          [xml]$Library = Get-Content -LiteralPath 'src\HveSquad.AgentFramework\HveSquad.AgentFramework.csproj' -Raw
+          $Version = [string]$Library.Project.PropertyGroup.Version
+          if ($Version -cnotmatch '\A(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\z') {
+            throw "Official package candidates require a stable three-part version, not '$Version'."
+          }
+          [xml]$Consumer = Get-Content -LiteralPath 'samples\HveSquad.PackageConsumer\HveSquad.PackageConsumer.csproj' -Raw
+          $ConsumerVersion = [string]$Consumer.Project.PropertyGroup.HveSquadPackageVersion
+          if ($ConsumerVersion -cne $Version) {
+            throw "The package consumer defaults to '$ConsumerVersion'; expected '$Version'."
+          }
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           dotnet-version: '10.0.x'

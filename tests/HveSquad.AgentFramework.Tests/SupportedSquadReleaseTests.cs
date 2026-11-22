@@ -162,7 +162,7 @@ public sealed class SupportedSquadReleaseTests
         var consumer = JsonSerializer.SerializeToNode(new
         {
             status = "passed",
-            libraryVersion = "0.2.0-preview.1+synthetic-verifier-control",
+            libraryVersion = "0.2.0+synthetic-verifier-control",
             release = new { supported.Tag, supported.CommitSha, assertions = supported.Assertions.Count },
             sameRunResume = true,
             helperAcquisitions = 0,
@@ -182,7 +182,7 @@ public sealed class SupportedSquadReleaseTests
             case "format": consumer["actualFormats"] = new JsonArray("md"); break;
             case "wrong-numeric-type": consumer["helperAcquisitions"] = "0"; break;
         }
-        var package = new NativePackageEvidence(1, "passed", "0.2.0-preview.1", new string('A', 64),
+        var package = new NativePackageEvidence(1, "passed", "0.2.0", new string('A', 64),
             defect == "partial-repack" ? new string('B', 64) : new string('A', 64), new string('C', 64),
             defect == "wrong-manifest" ? new string('D', 64) : Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(manifest))),
             JsonSerializer.SerializeToElement(consumer));
