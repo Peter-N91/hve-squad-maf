@@ -44,12 +44,16 @@ jobs:
         shell: pwsh
         run: |
           [xml]$Library = Get-Content -LiteralPath 'src\HveSquad.AgentFramework\HveSquad.AgentFramework.csproj' -Raw
-          $Version = [string]$Library.Project.PropertyGroup.Version
+          $VersionNodes = @($Library.SelectNodes('/Project/PropertyGroup/Version'))
+          if ($VersionNodes.Count -ne 1) { throw 'The library must declare exactly one package version.' }
+          $Version = $VersionNodes[0].InnerText.Trim()
           if ($Version -cnotmatch '\A(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\z') {
             throw "Official package candidates require a stable three-part version, not '$Version'."
           }
           [xml]$Consumer = Get-Content -LiteralPath 'samples\HveSquad.PackageConsumer\HveSquad.PackageConsumer.csproj' -Raw
-          $ConsumerVersion = [string]$Consumer.Project.PropertyGroup.HveSquadPackageVersion
+          $ConsumerVersionNodes = @($Consumer.SelectNodes('/Project/PropertyGroup/HveSquadPackageVersion'))
+          if ($ConsumerVersionNodes.Count -ne 1) { throw 'The package consumer must declare exactly one default package version.' }
+          $ConsumerVersion = $ConsumerVersionNodes[0].InnerText.Trim()
           if ($ConsumerVersion -cne $Version) {
             throw "The package consumer defaults to '$ConsumerVersion'; expected '$Version'."
           }
