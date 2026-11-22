@@ -7,7 +7,7 @@ application so end users can do evidence-backed business work: prepare an RFP
 response, compare customer solution options, or draft a reviewed knowledge article.
 Built on native Microsoft Agent Framework, this is a library intended for NuGet
 consumption, not a Copilot development plugin or an application-building assistant.
-Version **0.1.0-preview.1 is unpublished**; use source or a local feed today.
+Version **0.2.0-preview.1 is unpublished**; use source or a local feed today.
 
 It runs real MAF agents using released HVE charters, skills, and instructions.
 The supported app-facing workflow is evidence-gated work with research, planning,
@@ -49,11 +49,11 @@ files alone does not make the site live.
 | Capability | Native implementation |
 | --- | --- |
 | Simple setup | `SquadRuntime.CreateAsync`, or `AddHveSquad` with configuration and the application's existing `IChatClient` |
-| Release alignment | Defaults to the pinned official `v0.18.1` baseline, resolved to its verified exact commit before installation; `latest` is explicit candidate evaluation |
+| Release alignment | Defaults to the pinned official `v0.21.0` baseline, resolved to its verified exact commit before installation; `latest` is explicit candidate evaluation |
 | Roles and profiles | Canonical profiles/packs or confirmed custom roles; provided/assigned/mixed/skipped names; read-only Init choices and confirmed roster refresh/removal preserve outputs, root overrides and historical spend |
 | Concrete routing | Canonical intent rules prefer a specific contained phrase over its generic keyword; conflicting outcomes require a human owner choice. Primaries remain the default unless a catalog Selection Cue justifies an allowed alternate |
 | Model policy | Persisted off/ranked/manual routing uses actual host/client bindings, assignment fit and consequence floors; bounded manual menus, explicit stale fallback/refusal and requested/effective/observed identity evidence |
-| Governed delivery | Research, structurally verified single plan for `v0.18.1` (linked phase details for legacy resources), conditional intake/council, actual plan-derived producing owners, then review |
+| Governed delivery | Research, structurally verified single plan for `v0.21.0` (linked phase details for legacy resources), conditional intake/council, actual plan-derived producing owners, then review |
 | Producing fan-out | Verified deliverable ownership and task/phase dependencies; independent units are parallel-eligible, dependent units receive exact Scribe-recorded handoffs, and every unit needs its own output/effect proof |
 | Discovery and intake | Explicit quick/standard/deep/skip discovery or a once-per-topic eligible human offer; analyst-owned brief, independent typed intake, hash-bound reuse and at most two strictly shrinking supplemental-draft revalidations |
 | Task-fit councils | Relevant independent seats, recorded omissions and confirmed persistent extensions; attributed issues/conditions, most-restrictive synthesis and scoped human waivers that cannot bypass risk, model-spend or consequential-action gates |
@@ -115,7 +115,7 @@ or human-dependent blockers remain non-overridable. Gate responses expose exact
 decision references. Optional durable channels preserve these exact gate facts; a
 notification or model statement cannot approve them.
 
-The canonical release identity and all 279 numbered assertion dispositions (including 15 letter-suffixed subassertions) live in
+The canonical release identity and all 511 numbered assertion dispositions (including 29 letter-suffixed subassertions) live in
 [the compatibility manifest](compatibility/hve-squad-release.json), which is embedded
 in the package and exposed through `SupportedSquadRelease.Current`. Its conformance
 status is separate from its release identity: `verified` covers mechanical native
@@ -644,7 +644,7 @@ Sales user + approved inputs
 
 The [complete class and result record](docs/use-cases.html#rfp-code) accept a
 server-selected absolute `caseDirectory`, an existing `IChatClient`, human approval
-and question callbacks, and cancellation. It pins `v0.18.1`, selects `full` for
+and question callbacks, and cancellation. It pins `v0.21.0`, selects `full` for
 `technical-writer` and the intake seats, supplies two known `InputPaths`, and
 registers no custom tools. Native case reads and scoped Markdown/state writes
 remain available. `InputPaths` is not a read allowlist; isolate the available data
@@ -745,7 +745,7 @@ Pending time is separate from cumulative active execution and never resets run l
   "HveSquad": {
     "ProjectPath": "C:\\app-data\\bid-cases\\demo",
     "Profile": "full",
-    "Version": "v0.18.1",
+    "Version": "v0.21.0",
     "Mode": "interactive",
     "Packs": [],
     "InputPaths": ["inputs\\rfp.txt", "inputs\\approved-capabilities.txt"],
@@ -882,7 +882,7 @@ and select a trusted PowerShell 7.4+ executable:
 ```powershell
 dotnet run --project samples\HveSquad.AgentFramework.Sample -- `
   --skill-executor-demo "C:\Program Files\PowerShell\7\pwsh.exe" `
-  --project C:\app-data\squad-executor-demo --version v0.18.1
+  --project C:\app-data\squad-executor-demo --version v0.21.0
 ```
 
 The [reference host](samples/HveSquad.AgentFramework.Sample/SkillExecutorDemo.cs)
@@ -907,9 +907,9 @@ The source validates that it is a published stable semantic-version release,
 resolves the **tag** to its commit SHA, and installs that SHA through APM.
 It never uses the release's `target_commitish` field, a branch head, or `main`.
 
-The supported default is **v0.18.1**, commit
-`4c1f140f12f17abd3f200baa3afcb6d4c84bb6da`, with HVE Core
-`18f5ac75a1556e49f1e90647a4816d17499e1d7f`. The legacy **v0.16.2** release remains a
+The supported default is **v0.21.0**, commit
+`8921a36faf7402686bd3b2b64f6e70be70a0523c`, with HVE Core
+`4e84aee97eb0019afcb19bceb63347e096803ed5`. The legacy **v0.16.2** release remains a
 separate regression target. The [canonical manifest](compatibility/hve-squad-release.json)
 tracks conformance independently of identity; upstream roles and rules are not copied into duplicate prompts.
 
@@ -950,7 +950,7 @@ Credential-free release inspection:
 
 ```powershell
 dotnet run --project samples\HveSquad.AgentFramework.Sample -- --latest
-dotnet run --project samples\HveSquad.AgentFramework.Sample -- --release v0.18.1
+dotnet run --project samples\HveSquad.AgentFramework.Sample -- --release v0.21.0
 ```
 
 With no arguments the inspector searches for an installed project; explicit
@@ -964,7 +964,7 @@ stored in the repository.
 ```powershell
 dotnet run --project samples\HveSquad.AgentFramework.Sample -- `
   --run "Research the question in inputs\rfp.txt using inputs\approved-capabilities.txt. Cite source identifiers and report gaps. Stop after research; do not change inputs or send anything externally." `
-  --project C:\app-data\bid-cases\demo --version v0.18.1 --profile full
+  --project C:\app-data\bid-cases\demo --version v0.21.0 --profile full
 ```
 
 First provision the [fictional approved text inputs](docs/getting-started.html#sample);
@@ -1032,8 +1032,8 @@ install adapters, executors, renderers, principals, source or memory/learning ri
 
 ```powershell
 $env:HVE_SQUAD_TEST_POWERSHELL = (Get-Command pwsh).Source
-$env:HVE_SQUAD_RELEASE_VERSION = "v0.18.1"
-$env:HVE_SQUAD_RELEASE_COMMIT = "4c1f140f12f17abd3f200baa3afcb6d4c84bb6da"
+$env:HVE_SQUAD_RELEASE_VERSION = "v0.21.0"
+$env:HVE_SQUAD_RELEASE_COMMIT = "8921a36faf7402686bd3b2b64f6e70be70a0523c"
 $env:HVE_SQUAD_REQUIRE_RELEASE_TESTS = "true"
 dotnet test tests\HveSquad.AgentFramework.Tests --configuration Release -- xUnit.MaxParallelThreads=4
 

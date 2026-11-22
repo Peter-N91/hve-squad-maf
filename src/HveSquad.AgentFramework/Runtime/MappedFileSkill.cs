@@ -19,7 +19,7 @@ internal sealed class MappedFileSkill : AgentSkill
     internal MappedFileSkill(SquadSkill skill, int maxCharacters, IReadOnlyDictionary<string, AIFunction>? scripts = null)
     {
         _skill = skill;
-        _files = new ProjectFiles(skill.DirectoryPath, maxCharacters);
+        _files = new ProjectFiles(skill.DirectoryPath, Math.Max(maxCharacters, RuntimeResources.MaximumSkillResourceCharacters));
         _scripts = scripts ?? new Dictionary<string, AIFunction>();
         _maximumCharacters = maxCharacters;
         Frontmatter = new AgentSkillFrontmatter(skill.Name, skill.Description ?? $"Released {skill.Name} skill");

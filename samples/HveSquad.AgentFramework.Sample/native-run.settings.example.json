@@ -1,7 +1,7 @@
 {
   "request": "Research the approved local inputs. Report evidence and gaps. Stop after research; do not send anything externally.",
   "project": "C:\\app-data\\bid-cases\\demo",
-  "version": "v0.18.1",
+  "version": "v0.21.0",
   "profile": "full",
   "squadRoot": ".copilot-tracking/squad",
   "maxConcurrentDispatches": 4,

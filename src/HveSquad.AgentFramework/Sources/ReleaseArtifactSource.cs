@@ -20,7 +20,7 @@ public sealed partial class ReleaseArtifactSource : SquadArtifactSource
     public const string Repository = RepositoryOwner + "/" + RepositoryName;
 
     /// <summary>API mirror of the canonical production baseline, validated by its embedded manifest.</summary>
-    public const string TestedReleaseTag = "v0.18.1";
+    public const string TestedReleaseTag = "v0.21.0";
 
     private const string GitHubApiRoot = "https://api.github.com";
     private const int MaximumResponseCharacters = 64 * 1024;

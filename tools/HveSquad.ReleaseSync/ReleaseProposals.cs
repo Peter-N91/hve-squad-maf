@@ -34,7 +34,8 @@ internal sealed partial class ReleaseProposals
         _http = new(client, new Uri("https://api.github.com/"));
     }
 
-    internal async Task<ReleaseProposalResult> ProposeAsync(ReleaseEvaluationReport report, bool allowWrite, CancellationToken token)
+    internal async Task<ReleaseProposalResult> ProposeAsync(ReleaseEvaluationReport report, bool allowWrite, CancellationToken token,
+        IReadOnlyDictionary<string, string>? alignedFiles = null, bool supersedeStale = false)
     {
         ValidateReport(report);
         if (report.Candidate == report.Baseline)
@@ -47,7 +48,13 @@ internal sealed partial class ReleaseProposals
         }
         var descriptor = Descriptor(report);
         ValidateDescriptor(descriptor);
-        var content = JsonSerializer.Serialize(descriptor, ReleaseContracts.Json) + "\n";
+        var aligned = alignedFiles is { Count: > 0 };
+        var filesToWrite = aligned
+            ? alignedFiles!
+            : new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [CandidatePath] = JsonSerializer.Serialize(descriptor, ReleaseContracts.Json) + "\n",
+            };
         await AssertOfficialIdentityAsync(report.Candidate, token).ConfigureAwait(false);
         var repository = await RequiredAsync(HttpMethod.Get, "repos/" + _repository, null, token).ConfigureAwait(false);
         if (Text(repository, "full_name") != _repository || Boolean(repository, "archived") || Boolean(repository, "disabled"))
@@ -65,7 +72,12 @@ internal sealed partial class ReleaseProposals
         var existing = await PullsAsync(branch, baseBranch, token).ConfigureAwait(false);
         if (existing.Length != 0)
         {
-            return await ExistingAsync(existing.Single(), report, token).ConfigureAwait(false);
+            var existingResult = await ExistingAsync(existing.Single(), report, token).ConfigureAwait(false);
+            if (supersedeStale && existingResult.PullRequest is { } existingPr)
+            {
+                await CloseSupersededProposalsAsync(baseBranch, report.Candidate, existingPr, token).ConfigureAwait(false);
+            }
+            return existingResult;
         }
         var head = await RefAsync(branch, token).ConfigureAwait(false);
         if (head is null)
@@ -82,29 +94,38 @@ internal sealed partial class ReleaseProposals
                 throw new InvalidDataException("The created candidate branch has an unverified head.");
             }
         }
-        var observed = await _http.SendAsync(HttpMethod.Get, "repos/" + _repository + "/contents/" +
-            CandidatePath + "?ref=" + head, null, token, allowNotFound: true).ConfigureAwait(false);
         if (head != baseHead)
         {
-            if (observed is null)
+            if (aligned)
             {
-                throw new InvalidDataException("The deterministic candidate branch collides with unrelated work; no overwrite or auto-suffix is permitted.");
+                await VerifyCommitAsync(head, baseHead, filesToWrite, report.Candidate, aligned: true, token).ConfigureAwait(false);
             }
-            ValidateExistingDescriptor(ReleaseEvaluation.DecodeFile(observed.Value, CandidatePath), report);
-            await VerifyCommitAsync(head, baseHead, ReleaseEvaluation.DecodeFile(observed.Value, CandidatePath),
-                report.Candidate, token).ConfigureAwait(false);
+            else
+            {
+                var observed = await _http.SendAsync(HttpMethod.Get, "repos/" + _repository + "/contents/" +
+                    CandidatePath + "?ref=" + head, null, token, allowNotFound: true).ConfigureAwait(false);
+                if (observed is null)
+                {
+                    throw new InvalidDataException("The deterministic candidate branch collides with unrelated work; no overwrite or auto-suffix is permitted.");
+                }
+                var existingContent = ReleaseEvaluation.DecodeFile(observed.Value, CandidatePath);
+                ValidateExistingDescriptor(existingContent, report);
+                await VerifyCommitAsync(head, baseHead,
+                    new Dictionary<string, string>(StringComparer.Ordinal) { [CandidatePath] = existingContent },
+                    report.Candidate, aligned: false, token).ConfigureAwait(false);
+            }
         }
         else
         {
-            head = await WriteAsync(branch, baseHead, content, report.Candidate, token).ConfigureAwait(false);
+            head = await WriteAsync(branch, baseHead, filesToWrite, report.Candidate, aligned, token).ConfigureAwait(false);
         }
         var createdPr = await RequiredAsync(HttpMethod.Post, "repos/" + _repository + "/pulls", new
         {
-            title = "chore(compatibility): evaluate HVE Squad " + report.Candidate.Tag,
+            title = (aligned ? "chore(compatibility): align with HVE Squad " : "chore(compatibility): evaluate HVE Squad ") + report.Candidate.Tag,
             head = branch,
             @base = baseBranch,
-            body = Body(descriptor),
-            draft = true,
+            body = aligned ? AlignedBody(descriptor, filesToWrite.Keys) : Body(descriptor),
+            draft = !aligned,
             maintainer_can_modify = true,
         }, token).ConfigureAwait(false);
         var identity = ReadPull(createdPr, branch, baseBranch);
@@ -118,6 +139,10 @@ internal sealed partial class ReleaseProposals
         if (verified != identity)
         {
             throw new InvalidDataException("The new candidate PR changed before independent verification; inspect the provider outcome without replaying mutation.");
+        }
+        if (supersedeStale)
+        {
+            await CloseSupersededProposalsAsync(baseBranch, report.Candidate, identity.Number, token).ConfigureAwait(false);
         }
         return await ChecksAsync(identity, report.Candidate, token).ConfigureAwait(false);
     }
@@ -176,9 +201,27 @@ internal sealed partial class ReleaseProposals
     private async Task<ReleaseProposalResult> ExistingAsync(JsonElement value, ReleaseEvaluationReport report, CancellationToken token)
     {
         var identity = ReadPull(value, Branch(report.Candidate), Text(Object(value, "base"), "ref"));
-        var file = await RequiredAsync(HttpMethod.Get, "repos/" + _repository + "/contents/" + CandidatePath +
-            "?ref=" + identity.Head, null, token).ConfigureAwait(false);
-        ValidateExistingDescriptor(ReleaseEvaluation.DecodeFile(file, CandidatePath), report);
+        var candidateFile = await _http.SendAsync(HttpMethod.Get, "repos/" + _repository + "/contents/" + CandidatePath +
+            "?ref=" + identity.Head, null, token, allowNotFound: true).ConfigureAwait(false);
+        if (candidateFile is not null)
+        {
+            ValidateExistingDescriptor(ReleaseEvaluation.DecodeFile(candidateFile.Value, CandidatePath), report);
+        }
+        else
+        {
+            const string manifestPath = "compatibility/hve-squad-release.json";
+            var manifestFile = await RequiredAsync(HttpMethod.Get, "repos/" + _repository + "/contents/" + manifestPath +
+                "?ref=" + identity.Head, null, token).ConfigureAwait(false);
+            using var manifest = JsonDocument.Parse(ReleaseEvaluation.DecodeFile(manifestFile, manifestPath));
+            var root = manifest.RootElement;
+            if (HumanChannelHttp.Text(root, "tag") != report.Candidate.Tag ||
+                HumanChannelHttp.Text(root, "commitSha") != report.Candidate.CommitSha ||
+                report.Contracts is null ||
+                HumanChannelHttp.Text(root, "hveCoreCommitSha") != report.Contracts.HveCoreCommitSha)
+            {
+                throw new InvalidDataException("The existing aligned branch belongs to different source contracts; no overwrite or moved-tag update is permitted.");
+            }
+        }
         if (identity.State == "closed")
         {
             return new(identity.Merged ? "merged-baseline-unpromoted" : "closed-requires-maintainer",
@@ -186,6 +229,38 @@ internal sealed partial class ReleaseProposals
                 report.Candidate, identity.Head, identity.Number, identity.Url);
         }
         return await ChecksAsync(identity, report.Candidate, token).ConfigureAwait(false);
+    }
+
+    private async Task CloseSupersededProposalsAsync(string baseBranch, SquadRelease candidate, long activeNumber, CancellationToken token)
+    {
+        if (!Version.TryParse(candidate.Tag.AsSpan(1), out var candidateVersion))
+        {
+            return;
+        }
+        var openPulls = await _http.ListAsync("repos/" + _repository + "/pulls?state=open&base=" +
+            Uri.EscapeDataString(baseBranch), token).ConfigureAwait(false);
+        foreach (var pull in openPulls)
+        {
+            var number = HumanChannelHttp.Id(pull, "number");
+            var headObj = Object(pull, "head");
+            var headRef = Text(headObj, "ref");
+            if (number is null || number == activeNumber ||
+                Text(Object(headObj, "repo"), "full_name") != _repository ||
+                !headRef.StartsWith("automation/hve-squad/v", StringComparison.Ordinal))
+            {
+                continue;
+            }
+            var oldTag = headRef["automation/hve-squad/".Length..];
+            if (!ReleaseArtifactSource.IsStableTag(oldTag) ||
+                !Version.TryParse(oldTag.AsSpan(1), out var oldVersion) ||
+                oldVersion >= candidateVersion)
+            {
+                continue;
+            }
+            _ = await RequiredAsync(HttpMethod.Patch,
+                "repos/" + _repository + "/pulls/" + number.Value.ToString(CultureInfo.InvariantCulture),
+                new { state = "closed" }, token).ConfigureAwait(false);
+        }
     }
 
     private async Task<ReleaseProposalResult> ChecksAsync(PullIdentity pull, SquadRelease release, CancellationToken token)
@@ -266,9 +341,13 @@ internal sealed partial class ReleaseProposals
         return Result("checks-passed", "Actual candidate-head Windows/Linux parity and reviewed-contract gates passed. Semantic drift remains advisory; human review/merge is still required. No auto-merge, publication or deployment is performed.");
     }
 
-    private async Task<string> WriteAsync(string branch, string expectedHead, string content, SquadRelease release, CancellationToken token)
+    private async Task<string> WriteAsync(string branch, string expectedHead, IReadOnlyDictionary<string, string> filesToWrite,
+        SquadRelease release, bool aligned, CancellationToken token)
     {
-        var message = "chore(compatibility): propose HVE Squad " + release.Tag;
+        var message = (aligned ? "chore(compatibility): align with HVE Squad " : "chore(compatibility): propose HVE Squad ") + release.Tag;
+        var additions = filesToWrite.OrderBy(pair => pair.Key, StringComparer.Ordinal)
+            .Select(pair => new { path = pair.Key, contents = Convert.ToBase64String(Encoding.UTF8.GetBytes(pair.Value)) })
+            .ToArray();
         var input = new
         {
             branch = new { repositoryNameWithOwner = _repository, branchName = branch },
@@ -279,7 +358,7 @@ internal sealed partial class ReleaseProposals
                 headline = message,
                 body = "\U0001f4e6 - Generated by Copilot\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>",
             },
-            fileChanges = new { additions = new[] { new { path = CandidatePath, contents = Convert.ToBase64String(Encoding.UTF8.GetBytes(content)) } } },
+            fileChanges = new { additions },
         };
         var result = await RequiredAsync(HttpMethod.Post, "graphql", new
         {
@@ -295,26 +374,31 @@ internal sealed partial class ReleaseProposals
         {
             throw new InvalidDataException("GitHub returned an invalid candidate commit.");
         }
-        await VerifyCommitAsync(head, expectedHead, content, release, token).ConfigureAwait(false);
+        await VerifyCommitAsync(head, expectedHead, filesToWrite, release, aligned, token).ConfigureAwait(false);
         return head;
     }
 
-    private async Task VerifyCommitAsync(string head, string expectedHead, string content, SquadRelease release, CancellationToken token)
+    private async Task VerifyCommitAsync(string head, string expectedHead, IReadOnlyDictionary<string, string> expectedFiles,
+        SquadRelease release, bool aligned, CancellationToken token)
     {
-        var message = "chore(compatibility): propose HVE Squad " + release.Tag;
+        var message = (aligned ? "chore(compatibility): align with HVE Squad " : "chore(compatibility): propose HVE Squad ") + release.Tag;
         var commit = await RequiredAsync(HttpMethod.Get, "repos/" + _repository + "/commits/" + head, null, token).ConfigureAwait(false);
         var parents = Array(commit, "parents");
         var files = Array(commit, "files");
+        var expectedNames = expectedFiles.Keys.ToHashSet(StringComparer.Ordinal);
+        var actualNames = files.Select(f => Text(f, "filename")).ToHashSet(StringComparer.Ordinal);
         if (Text(commit, "sha") != head || parents.Length != 1 || Text(parents[0], "sha") != expectedHead ||
             Text(Object(commit, "commit"), "message").Split('\n')[0] != message ||
-            files.Length != 1 || Text(files[0], "filename") != CandidatePath ||
-            Text(files[0], "status") is not ("added" or "modified"))
+            files.Length != expectedFiles.Count || !actualNames.SetEquals(expectedNames) ||
+            files.Any(f => Text(f, "status") is not ("added" or "modified")))
         {
-            throw new InvalidDataException("The candidate commit does not prove one original parent and the sole permitted metadata file.");
+            throw new InvalidDataException("The candidate commit does not prove one original parent and the exact allowlisted file set.");
         }
-        var file = await RequiredAsync(HttpMethod.Get, "repos/" + _repository + "/contents/" + CandidatePath +
+        var verifyPath = aligned ? "compatibility/hve-squad-release.json" : CandidatePath;
+        var file = await RequiredAsync(HttpMethod.Get, "repos/" + _repository + "/contents/" + verifyPath +
             "?ref=" + head, null, token).ConfigureAwait(false);
-        if (ReleaseEvaluation.DecodeFile(file, CandidatePath) != content || await RefAsync(Branch(release), token).ConfigureAwait(false) != head)
+        if (ReleaseEvaluation.DecodeFile(file, verifyPath) != expectedFiles[verifyPath] ||
+            await RefAsync(Branch(release), token).ConfigureAwait(false) != head)
         {
             throw new InvalidDataException("The provider did not prove the exact candidate file bytes and branch head.");
         }
@@ -421,6 +505,24 @@ internal sealed partial class ReleaseProposals
     }
 
     private static string Branch(SquadRelease release) => "automation/hve-squad/" + release.Tag;
+    private static string AlignedBody(ReleaseCandidate descriptor, IEnumerable<string> files)
+    {
+        ValidateDescriptor(descriptor);
+        var summary = string.Join("\n", descriptor.DriftSummary.Select(pair =>
+            "* " + pair.Key + " drift: " + pair.Value.ToString(CultureInfo.InvariantCulture)));
+        var fileList = string.Join("\n", files.OrderBy(path => path, StringComparer.Ordinal).Select(path => "* `" + path + "`"));
+        return "## Verified HVE Squad release alignment\n\n" +
+            "* Squad: `" + descriptor.Release.Tag + "` at `" + descriptor.Release.CommitSha + "`\n" +
+            "* HVE Core: `" + descriptor.HveCoreCommitSha + "`\n" +
+            "* Previous baseline: `" + descriptor.Baseline.Tag + "`\n" +
+            "* Reviewed contract fingerprint: `" + descriptor.ContractFingerprint + "`\n\n" +
+            "## Drift and mechanical verification\n\n" + (summary.Length == 0 ? "* No observed contract delta.\n" : summary + "\n") +
+            "* Linux and Windows candidate release suites, legacy regressions, isolated NuGet consumer repack, conformance verification and bilingual docs builds passed in the alignment workflow before opening this PR.\n\n" +
+            "## Updated files\n\n" + fileList + "\n\n" +
+            "Human review and merge remain required; automation never auto-merges, publishes a package or deploys. " +
+            "If this PR was opened with `GITHUB_TOKEN`, select **Approve workflows to run** (or configure `HVE_SQUAD_AUTOMATION_TOKEN`) so branch-protection PR checks also execute on the PR head.";
+    }
+
     private static string Body(ReleaseCandidate descriptor)
     {
         ValidateDescriptor(descriptor);

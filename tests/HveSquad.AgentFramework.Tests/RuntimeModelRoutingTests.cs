@@ -876,6 +876,78 @@ public sealed class RuntimeModelRoutingTests
         Assert.DoesNotContain("not pre-execution", result.ResponseText, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task GivenEconomyPolicy_WhenConfirmed_SelectsCheapestQualifiedModelWithinFloorAndRecordsAllRoleConsent()
+    {
+        using var host = new RuntimeTestHost();
+        UseModels(host);
+        SetFloor(host, "lead", "default");
+        SetFloor(host, "technical-writer", "default");
+        host.Options.ModelRouting = new() { Mode = "economy" };
+        host.QueueSuccess("technical-writer");
+        using var runtime = await host.CreateAsync();
+
+        var result = await runtime.RunAsync("Write documentation.");
+
+        Assert.True(result.Status == SquadRunStatus.Completed, result.ResponseText);
+        Assert.Contains(host.Approvals, approval => approval.Kind == SquadApprovalKind.ModelRouting &&
+            approval.Description.Contains("Economy Mode", StringComparison.Ordinal) &&
+            approval.Description.Contains("Scope: all-roles", StringComparison.Ordinal));
+        var decisions = File.ReadAllText(Path.Combine(host.Project, ".copilot-tracking", "squad", "decisions.md"));
+        Assert.Contains("Economy Mode Accepted", decisions, StringComparison.Ordinal);
+        Assert.Contains("Scope: all-roles", decisions, StringComparison.Ordinal);
+        var team = File.ReadAllText(Path.Combine(host.Project, ".copilot-tracking", "squad", "team.md"));
+        Assert.Contains("Model routing: economy", team, StringComparison.Ordinal);
+        Assert.Equal("model-newer", result.Evidence.Single(item => item.Role == "researcher").Model);
+        Assert.Equal("model-newer", result.Evidence.Single(item => item.Role == "lead").Model);
+        Assert.Equal("model-coder", result.Evidence.Single(item => item.Role == "technical-writer").Model);
+        Assert.Equal("model-coder", result.Evidence.Single(item => item.Role == "tester").Model);
+        Assert.All(result.Evidence, item =>
+            Assert.StartsWith("Route: economy;", item.ModelRouting!.Rationale, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task GivenEconomyHostRejection_WhenRetrying_ReRanksInEconomyInsteadOfSwitchingToRanked()
+    {
+        using var host = new RuntimeTestHost();
+        UseModels(host);
+        SetFloor(host, "technical-writer", "default");
+        var rejecting = new ControlledClient(host.Client, _ =>
+            new SquadModelUnavailableException("model-coder", ["model-newer", "model-older", "model-frontier"]));
+        host.Options.AvailableModelsAsync = _ => ValueTask.FromResult<IReadOnlyList<SquadAvailableModel>>(
+            [new("model-coder", rejecting), new("model-newer", host.Client), new("model-older", host.Client), new("model-frontier", host.Client)]);
+        host.Options.ModelRouting = new() { Mode = "economy" };
+        host.QueueSuccess("technical-writer");
+        using var runtime = await host.CreateAsync();
+
+        var result = await runtime.RunAsync("Write documentation.");
+
+        Assert.True(result.Status == SquadRunStatus.Completed, result.ResponseText);
+        var produced = result.Evidence.Single(item => item.Role == "technical-writer");
+        Assert.Equal("model-coder", produced.ModelRouting!.RequestedModel);
+        Assert.Equal("model-newer", produced.ModelRouting.EffectiveModel);
+        Assert.StartsWith("Route: economy;", produced.ModelRouting.Rationale, StringComparison.Ordinal);
+        Assert.DoesNotContain(host.Client.Calls, call => call.Options?.ModelId == "model-frontier");
+    }
+
+    [Fact]
+    public async Task GivenUnattendedWatch_WhenSwitchingToEconomyWithoutConsent_RefusesBeforeDispatch()
+    {
+        using var host = new RuntimeTestHost();
+        host.UseCurrentPlanContract();
+        UseModels(host);
+        host.Options.ModelRouting = new() { Mode = "economy" };
+        RuntimeWatchTests.QueueReportResearch(host);
+        using var federation = await SquadFederation.CreateAsync(host.Client, host.Options, host.Source());
+
+        var result = await federation.HandleWatchEventAsync(
+            RuntimeWatchTests.ReportEvent(), RuntimeWatchTests.ReportConfiguration());
+
+        Assert.Equal(SquadWatchStatus.Blocked, result.Status);
+        Assert.Contains("cannot accept Economy Mode", result.Run!.ResponseText, StringComparison.Ordinal);
+        Assert.Empty(result.Run.Evidence);
+    }
+
     private sealed class CouncilRoutingClient(IChatClient inner, TaskCompletionSource sibling, bool rejectArchitect) : DelegatingChatClient(inner)
     {
         public override async Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null,

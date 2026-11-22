@@ -1551,7 +1551,8 @@ public sealed partial class SquadRuntime : IDisposable
         {
             var (stage, task, depth) = (pending.Stage, pending.Task, pending.Depth);
             var dispatchId = pending.Id;
-            var returnsOnlyStage = stage == "discovery" && (entry.Role != "analyst" || depth > 1);
+            var returnsOnlyStage = (stage == "discovery" && (entry.Role != "analyst" || depth > 1)) ||
+                (stage is "intake" or "validation" && RoleOutputContract.ReturnsOnly(entry.Role));
             var artifacts = entry.DeliverableRoot is null || returnsOnlyStage ? null :
                 new DispatchArtifacts(runtime._files, entry, stage, runId, dispatchId, depth,
                     runtime._options.MaxArtifactsPerDispatch, runtime._resources.RequiresSeparatePlanDetails, pending.RecordedAt);

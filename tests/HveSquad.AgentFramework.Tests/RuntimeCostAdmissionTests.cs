@@ -10,8 +10,7 @@ public sealed class RuntimeCostAdmissionTests
     private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true };
     private static string StatePath(RuntimeTestHost host) => Path.Combine(host.Project, host.Options.SquadRoot, "state.json");
 
-    private static RuntimeState ReadState(RuntimeTestHost host) =>
-        JsonSerializer.Deserialize<RuntimeState>(File.ReadAllText(StatePath(host)))!;
+    private static RuntimeState ReadState(RuntimeTestHost host) => host.ReadState();
 
     private static void QueueDelivery(RuntimeTestHost host)
     {

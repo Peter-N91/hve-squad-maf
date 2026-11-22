@@ -158,7 +158,7 @@ public class SquadCatalogTests
         var catalog = SquadCatalog.Load(SquadArtifactLoader.Load(root));
 
         Assert.Equal(11, catalog.Profiles.Count);
-        Assert.Equal(3, catalog.Packs.Count);
+        Assert.Equal(9, catalog.Packs.Count);
         Assert.Contains(catalog.ResolveRoster("default"), r => r.Role == "scribe");
         Assert.All(
             catalog.ResolveRoster("default", ["aws"]),

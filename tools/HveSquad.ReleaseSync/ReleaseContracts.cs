@@ -109,7 +109,7 @@ internal static partial class ReleaseContracts
     internal static SortedDictionary<string, string> ReadDependencies(string package, SquadRelease release, out string core)
     {
         ValidateIdentity(release);
-        if (package.Length is 0 or > 1_000_000)
+        if (package.Length is 0 or > 2_000_000)
         {
             throw new InvalidDataException("The candidate APM manifest is empty or exceeds its bound.");
         }
@@ -171,7 +171,7 @@ internal static partial class ReleaseContracts
 
     internal static SortedDictionary<string, string> ReadAssertions(string behavior)
     {
-        if (behavior.Length is 0 or > 1_000_000)
+        if (behavior.Length is 0 or > 2_000_000)
         {
             throw new InvalidDataException("The released behavior contract is empty or exceeds its bound.");
         }

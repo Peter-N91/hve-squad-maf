@@ -29,7 +29,7 @@ public sealed record SquadSkillScriptBinding(
         ArgumentNullException.ThrowIfNull(roots);
         var artifacts = SquadArtifactLoader.Load(roots.Roots, roots.RosterPath);
         var skill = SkillScriptContracts.Find(artifacts, skillName, resourcePath);
-        var files = new ProjectFiles(skill.DirectoryPath, 200_000);
+        var files = new ProjectFiles(skill.DirectoryPath, RuntimeResources.MaximumSkillResourceCharacters);
         var binding = new SquadSkillScriptBinding(skill.Name, resourcePath, roots.Release,
             files.HashFile("SKILL.md"), files.HashFile(resourcePath), executorBinding);
         SkillScriptContracts.ValidateShape(binding);
@@ -65,7 +65,7 @@ internal static partial class SkillScriptContracts
         }
         var skill = artifacts.Skills.SingleOrDefault(skill => skill.Name.Equals(skillName, StringComparison.Ordinal))
             ?? throw new InvalidDataException($"Canonical skill '{skillName}' is not installed.");
-        var files = new ProjectFiles(skill.DirectoryPath, 200_000);
+        var files = new ProjectFiles(skill.DirectoryPath, RuntimeResources.MaximumSkillResourceCharacters);
         if (!File.Exists(files.Resolve(resourcePath)))
         {
             throw new InvalidDataException($"Canonical resource '{skillName}/{resourcePath}' is not installed.");
@@ -89,7 +89,7 @@ internal static partial class SkillScriptContracts
     {
         ValidateShape(binding);
         var skill = Find(artifacts, binding.SkillName, binding.ResourcePath);
-        var files = new ProjectFiles(skill.DirectoryPath, 200_000);
+        var files = new ProjectFiles(skill.DirectoryPath, RuntimeResources.MaximumSkillResourceCharacters);
         if (binding.Release != roots.Release || files.HashFile("SKILL.md") != binding.SkillSha256 ||
             files.HashFile(binding.ResourcePath) != binding.ResourceSha256)
         {

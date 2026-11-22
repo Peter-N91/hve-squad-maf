@@ -177,6 +177,46 @@ public sealed partial class SquadModelCatalog
         return candidates.AsReadOnly();
     }
 
+    /// <summary>Selects cost-first qualified models (fit &gt;= 2, known nonnegative price) inside the role's floor.</summary>
+    /// <param name="available">Exact identifiers advertised by this host.</param>
+    /// <param name="assignmentClass">The canonical assignment class.</param>
+    /// <param name="floor">The confirmed roster's Model Tier.</param>
+    /// <returns>Evaluated floor-admitted models ordered by lowest Blended rate, higher fit, same-family generation and source order.</returns>
+    public IReadOnlyList<SquadCatalogModel> RankEconomy(IEnumerable<string> available, string assignmentClass, string? floor)
+    {
+        ArgumentNullException.ThrowIfNull(available);
+        if (!Classes.Contains(assignmentClass, StringComparer.Ordinal))
+        {
+            throw new ArgumentException("Unknown model assignment class.", nameof(assignmentClass));
+        }
+        var ids = available.ToHashSet(StringComparer.Ordinal);
+        var candidates = Models.Where(m => ids.Contains(m.Id) &&
+            Admits(floor, m.CapabilityClass, manual: false) && m.Fit[assignmentClass] >= 2).ToList();
+        candidates.Sort((left, right) =>
+        {
+            var cost = left.BlendedUsdPerMillion.CompareTo(right.BlendedUsdPerMillion);
+            if (cost != 0)
+            {
+                return cost;
+            }
+            var fit = right.Fit[assignmentClass].CompareTo(left.Fit[assignmentClass]);
+            if (fit != 0)
+            {
+                return fit;
+            }
+            if (left.Family == right.Family)
+            {
+                var generation = right.Generation.CompareTo(left.Generation);
+                if (generation != 0)
+                {
+                    return generation;
+                }
+            }
+            return left.Order.CompareTo(right.Order);
+        });
+        return candidates.AsReadOnly();
+    }
+
     /// <summary>Checks the released consequence floor independently of a model's price.</summary>
     /// <param name="floor">The confirmed fast, default or extended floor.</param>
     /// <param name="capability">A declared capability class.</param>

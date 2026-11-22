@@ -34,8 +34,8 @@ public sealed class RuntimeReleaseContractTests
             ["modernization"] = "researcher,lead,developer,tester,modernizer,architect,azure-architect,iac-author,cost-manager,asbuilt-author,scribe",
             ["compliance"] = "researcher,lead,developer,tester,security,supply-chain,vuln-manager,privacy,rai,accessibility,risk-manager,scribe",
             ["operations"] = "researcher,lead,developer,tester,azure-diagnose,performance,observability,asbuilt-author,iac-author,deployer,scribe",
-            ["product"] = "researcher,lead,developer,tester,analyst,designer,product-owner,presenter,technical-writer,experimenter,data-scientist,intake-validator,scribe",
-            ["full"] = "researcher,lead,developer,tester,challenger,architect,azure-architect,iac-author,deployer,asbuilt-author,azure-diagnose,security,supply-chain,vuln-manager,rai,privacy,accessibility,risk-manager,performance,observability,designer,fact-checker,cost-manager,modernizer,prompt-engineer,analyst,product-owner,presenter,technical-writer,experimenter,data-scientist,intake-validator,scribe",
+            ["product"] = "researcher,lead,developer,tester,analyst,designer,product-owner,technical-writer,experimenter,data-scientist,intake-validator,scribe",
+            ["full"] = "researcher,lead,developer,tester,challenger,architect,azure-architect,iac-author,deployer,asbuilt-author,azure-diagnose,security,supply-chain,vuln-manager,rai,privacy,accessibility,risk-manager,performance,observability,designer,fact-checker,cost-manager,modernizer,prompt-engineer,analyst,product-owner,technical-writer,experimenter,data-scientist,intake-validator,scribe",
         };
         foreach (var (profile, members) in expected)
         {
@@ -46,6 +46,7 @@ public sealed class RuntimeReleaseContractTests
             _ = await runtime.RunAsync("Inspect the initialized roster.");
             Assert.Equal(members.Split(','), runtime.Roster.Members.Select(member => member.Role));
             Assert.Equal(11, runtime.Catalog.Profiles.Count);
+            Assert.Equal(9, runtime.Catalog.Packs.Count);
             foreach (var member in runtime.Roster.Members)
             {
                 Assert.NotNull(runtime.Artifacts.FindCharter(member.PrimaryAgent));
@@ -61,11 +62,22 @@ public sealed class RuntimeReleaseContractTests
                 ["power-platform"] = "pp-architect,pp-connector",
                 ["m365-copilot"] = "m365-agent-architect,m365-agent-integrator",
                 ["aws"] = "aws-architect,aws-diagnose",
+                ["foundry"] = "architect,azure-architect,deployer,prompt-engineer,security,rai,observability,cost-manager,data-scientist",
+                ["fabric"] = "data-scientist",
+                ["dotnet"] = "modernizer,tester,performance,developer",
+                ["aks"] = "azure-architect,developer,modernizer,azure-diagnose,cost-manager",
+                ["azure-functions"] = "developer,deployer,tester,azure-diagnose,modernizer",
+                ["azure-cloud"] = "cost-manager,azure-diagnose,asbuilt-author,azure-architect,modernizer",
             })
             {
                 var composed = runtime.Catalog.ResolveRoster("default", [pack]);
-                Assert.Equal(expected["default"].Split(',').Concat(roles.Split(',')), composed.Select(member => member.Role));
+                var expectedComposed = expected["default"].Split(',')
+                    .Concat(roles.Split(','))
+                    .Distinct(StringComparer.Ordinal);
+                Assert.Equal(expectedComposed, composed.Select(member => member.Role));
             }
+            Assert.Equal(expected["full"].Split(','),
+                runtime.Catalog.ResolveRoster("full", ["fabric", "dotnet", "aks", "azure-functions", "azure-cloud"]).Select(member => member.Role));
         }
     }
 
@@ -126,7 +138,7 @@ public sealed class RuntimeReleaseContractTests
             {
                 var providers = artifacts.Skills.Where(skill =>
                     (skill.Name == squad.Name || charter.Instructions.Contains("`" + skill.Name + "`", StringComparison.OrdinalIgnoreCase)) &&
-                    File.Exists(new ProjectFiles(skill.DirectoryPath, 200_000).Resolve(match.Groups[1].Value))).ToArray();
+                    File.Exists(new ProjectFiles(skill.DirectoryPath, RuntimeResources.MaximumSkillResourceCharacters).Resolve(match.Groups[1].Value))).ToArray();
                 if (providers.Length == 0)
                 {
                     unresolved.Add(charter.Name + ": " + match.Groups[1].Value);
@@ -134,13 +146,23 @@ public sealed class RuntimeReleaseContractTests
             }
         }
         Assert.Empty(unresolved);
-        foreach (var name in new[] { "Squad Coordinator", "Squad Federation Coordinator", "Squad Document", "Squad Governance Report", "Squad Learn" })
+        foreach (var name in new[]
+        {
+            "Squad Coordinator", "Squad Federation Coordinator", "Squad Document", "Squad Governance Report",
+            "Squad Learn", "Squad Coach", "Squad Doctor", "Squad Connector Builder", "Squad External Agent Builder",
+        })
         {
             var charter = artifacts.FindCharter(name);
             Assert.NotNull(charter);
             Assert.True(charter.UserInvocable);
-            Assert.Equal(name is not ("Squad Document" or "Squad Governance Report"), charter.DisableModelInvocation);
+            Assert.Equal(name is "Squad Coordinator" or "Squad Federation Coordinator" or "Squad Learn" or "Squad Coach",
+                charter.DisableModelInvocation);
         }
+        var connector = artifacts.FindCharter("Squad Connector");
+        Assert.NotNull(connector);
+        Assert.False(connector.UserInvocable);
+        Assert.False(connector.DisableModelInvocation);
+        Assert.True(File.Exists(Path.Combine(squad.DirectoryPath, "extensions", "hve-squad-studio", "copilot-extension.json")));
         var resources = new RuntimeResources(artifacts, roots);
         foreach (var reference in new[] { "00-index", "profiles-and-packs", "operating-procedure", "gates-and-modes", "seed-templates", "scribe-procedure", "entry-schemas" })
         {

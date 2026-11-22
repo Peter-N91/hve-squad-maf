@@ -11,10 +11,15 @@ Drafts, prereleases, mutable refs, unpublished metadata, moved tags and unavaila
 It never acquires from upstream `main`.
 
 The scheduled [alignment workflow](../../.github/workflows/release-alignment.yml) separates read-only
-evaluation from a narrowly privileged proposal job. The latter compiles only the trusted repository head,
-does not acquire/execute candidate artifacts, and can add only
-`compatibility/candidate-release.json` to one deterministic `automation/hve-squad/vX.Y.Z` branch.
-The atomic GitHub commit binds the expected branch head. Original parent, sole file, exact content,
+evaluation and full Linux/Windows validation from a narrowly privileged proposal job. When a new official
+stable release preserves all mapped assertion IDs and passes the full cross-platform test, legacy,
+isolated package-consumer, conformance, and bilingual documentation checks in the read-only validation
+matrix, `prepare-alignment` and `propose --allow-write --aligned --supersede-stale` open a ready-for-review
+alignment PR on `automation/hve-squad/vX.Y.Z` containing only the allowlisted compatibility, pin,
+observation, and documentation updates, while closing superseded older `automation/hve-squad/v*` PRs.
+When upstream introduces unmapped assertions or a validation check fails, the workflow instead opens a
+metadata-only draft evaluation PR adding `compatibility/candidate-release.json` with exact drift diagnostics.
+The atomic GitHub commit binds the expected branch head. Original parent, allowlisted file set, exact content,
 branch and PR head are independently re-read. Existing, closed, colliding or uncertain proposals are
 not overwritten, force-pushed, auto-suffixed, reopened or silently duplicated.
 
@@ -79,7 +84,7 @@ not that these blockers passed.
    step must succeed on both Windows and Linux; green base/merge-head runs, empty reports, skips,
    absent methods/data cases and mismatched commits do not count.
 5. Compare the actual observations against the prior last-good
-   [fixture baseline](../../compatibility/observations/v0.18.1.json).
+   [fixture baseline](../../compatibility/observations/v0.21.0.json).
    They are reduced from verified native dispatch/history/gate receipts and actual files, not run prose.
    Deliverables compare normalized root plus extension, never topic filenames. Native bookkeeping,
    memory/learning operations and coordinator/provider calls are not fictitious role dispatches.
@@ -124,7 +129,7 @@ The compatibility schedule and `main` workflow call this same acceptance matrix;
 candidate workflow directly, avoiding duplicate full suites. The dedicated authorized validation
 branch can run it before merge. No check publishes its built NuGet package or deploys a product.
 The catalogue explicitly explains native schema/Markdown receipts, deterministic Scribe work,
-the 32 dispatchable full-profile roles plus Scribe, optional frontmatter defaults, native MAF
+the 31 dispatchable full-profile roles plus Scribe, optional frontmatter defaults, native MAF
 charter delivery beyond the Copilot UI cap, and NuGet versus plugin-hook packaging.
 
 `capture-observations --output compatibility\observations\vX.Y.Z.json` records the latest actual

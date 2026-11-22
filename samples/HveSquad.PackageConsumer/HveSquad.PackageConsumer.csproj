@@ -8,12 +8,12 @@
     <IsPackable>false</IsPackable>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <HveSquadPackageVersion Condition="'$(HveSquadPackageVersion)' == ''">0.1.0-preview.1</HveSquadPackageVersion>
+    <HveSquadPackageVersion Condition="'$(HveSquadPackageVersion)' == ''">0.2.0-preview.1</HveSquadPackageVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="HveSquad.AgentFramework" Version="$(HveSquadPackageVersion)" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
   </ItemGroup>
 
 </Project>

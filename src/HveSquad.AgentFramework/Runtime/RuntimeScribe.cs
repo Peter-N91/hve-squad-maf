@@ -175,7 +175,7 @@ internal sealed partial class RuntimeScribe(ProjectFiles files, ILogger? logger 
         SquadModelRoutingConfiguration? modelRouting)
     {
         var table = new StringBuilder("# Native single-squad roster\n");
-        var routed = modelRouting?.Mode is "ranked" or "manual";
+        var routed = modelRouting?.Mode is "ranked" or "economy" or "manual";
         if (routed)
         {
             table.AppendLine("Model routing: " + modelRouting!.Mode);

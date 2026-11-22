@@ -129,7 +129,7 @@ internal sealed class ReleaseEvaluation(HttpClient client, SquadArtifactAcquisit
         if (HumanChannelHttp.Text(file, "type") != "file" || HumanChannelHttp.Text(file, "encoding") != "base64" ||
             HumanChannelHttp.Text(file, "path") != expectedPath ||
             !ReleaseArtifactSource.IsCommit(HumanChannelHttp.Text(file, "sha") ?? "") || content is null ||
-            !file.TryGetProperty("size", out var size) || !size.TryGetInt32(out var length) || length is < 1 or > 512 * 1024)
+            !file.TryGetProperty("size", out var size) || !size.TryGetInt32(out var length) || length is < 1 or > 2 * 1024 * 1024)
         {
             throw new InvalidDataException("GitHub returned an incomplete, wrong-path or oversized exact file.");
         }

@@ -9,7 +9,7 @@ public sealed class RuntimeReadinessTests
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
 
     private static string StatePath(RuntimeTestHost host) => Path.Combine(host.Project, host.Options.SquadRoot, "state.json");
-    private static RuntimeState State(RuntimeTestHost host) => JsonSerializer.Deserialize<RuntimeState>(File.ReadAllText(StatePath(host)))!;
+    private static RuntimeState State(RuntimeTestHost host) => host.ReadState();
 
     private static void QueuePlan(RuntimeTestHost host, string[]? inputs = null)
     {

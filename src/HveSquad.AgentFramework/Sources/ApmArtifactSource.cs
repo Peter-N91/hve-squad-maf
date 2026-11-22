@@ -124,7 +124,8 @@ public sealed partial class ApmArtifactSource : SquadArtifactSource
 
     private async Task InstallAndPublishAsync(CancellationToken cancellationToken)
     {
-        var stagingDirectory = $"{_cacheDirectory}.staging-{Guid.NewGuid():N}";
+        var cacheParent = Path.GetDirectoryName(_cacheDirectory)!;
+        var stagingDirectory = Path.Combine(cacheParent, $".s-{Guid.NewGuid().ToString("N")[..8]}");
         Directory.CreateDirectory(stagingDirectory);
 
         try
@@ -166,6 +167,8 @@ public sealed partial class ApmArtifactSource : SquadArtifactSource
                 throw new SquadArtifactsNotFoundException(
                     $"apm install completed but did not produce agents, instructions, and skills under '{stagingDirectory}'.");
             }
+
+            TryDeleteFileSystemEntry(Path.Combine(stagingDirectory, "apm_modules"));
 
             // These hashes detect local cache changes after a trusted APM acquisition. They do not
             // independently authenticate upstream release content.
@@ -344,28 +347,57 @@ public sealed partial class ApmArtifactSource : SquadArtifactSource
 
     private static async Task<string> CaptureOutputAsync(StreamReader reader)
     {
-        var result = new StringBuilder();
+        var head = new StringBuilder();
+        var tail = new StringBuilder();
         var buffer = new char[4096];
         var truncated = false;
+        var half = MaximumDiagnosticCharacters / 2;
         int count;
 
         while ((count = await reader.ReadAsync(buffer.AsMemory(), CancellationToken.None).ConfigureAwait(false)) != 0)
         {
-            var remaining = MaximumDiagnosticCharacters - result.Length;
+            var remaining = half - head.Length;
             if (remaining > 0)
             {
-                result.Append(buffer, 0, Math.Min(count, remaining));
+                var used = Math.Min(count, remaining);
+                head.Append(buffer, 0, used);
+                if (count > used)
+                {
+                    truncated = true;
+                    AppendTail(tail, buffer.AsSpan(used, count - used), half);
+                }
             }
-
-            truncated |= count > remaining;
+            else
+            {
+                truncated = true;
+                AppendTail(tail, buffer.AsSpan(0, count), half);
+            }
         }
 
-        if (truncated)
+        if (!truncated)
         {
-            result.AppendLine().Append("[output truncated]");
+            return head.ToString();
         }
 
-        return result.ToString();
+        return head.AppendLine().AppendLine("[output truncated]").Append(tail).ToString();
+    }
+
+    private static void AppendTail(StringBuilder tail, ReadOnlySpan<char> chunk, int maxLength)
+    {
+        if (chunk.Length >= maxLength)
+        {
+            tail.Clear();
+            tail.Append(chunk[^maxLength..]);
+            return;
+        }
+
+        var overflow = tail.Length + chunk.Length - maxLength;
+        if (overflow > 0)
+        {
+            tail.Remove(0, overflow);
+        }
+
+        tail.Append(chunk);
     }
 
     private static string ResolveApmExecutable(string? configuredExecutable)
@@ -563,7 +595,8 @@ public sealed partial class ApmArtifactSource : SquadArtifactSource
 
     private void PublishStagingDirectory(string stagingDirectory)
     {
-        var replacedDirectory = $"{_cacheDirectory}.replaced-{Guid.NewGuid():N}";
+        var cacheParent = Path.GetDirectoryName(_cacheDirectory)!;
+        var replacedDirectory = Path.Combine(cacheParent, $".r-{Guid.NewGuid().ToString("N")[..8]}");
         var movedExistingCache = false;
         var published = false;
 
@@ -713,11 +746,19 @@ public sealed partial class ApmArtifactSource : SquadArtifactSource
 
     private static string? FirstDiagnostic(string? text)
     {
-        return string.IsNullOrWhiteSpace(text)
-            ? null
-            : text.Split(
-                ['\r', '\n'],
-                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        var lines = text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var errorLine = lines.LastOrDefault(static line =>
+            line.StartsWith("[x]", StringComparison.OrdinalIgnoreCase)
+            || line.StartsWith("[!]", StringComparison.OrdinalIgnoreCase)
+            || line.StartsWith("+-", StringComparison.Ordinal)
+            || line.Contains("error", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("failed", StringComparison.OrdinalIgnoreCase));
+        return errorLine ?? lines.LastOrDefault();
     }
 
     private sealed record CacheManifest(
