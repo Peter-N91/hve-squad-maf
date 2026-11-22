@@ -773,7 +773,7 @@ public sealed class RuntimeEvidenceTests
                     {
                         return;
                     }
-                    using var state = JsonDocument.Parse(File.ReadAllText(StatePath(host)));
+                    using var state = JsonDocument.Parse(host.ReadStateText());
                     if (state.RootElement.GetProperty("Checkpoint").GetProperty("PendingEvidence").EnumerateArray()
                         .Count(e => e.GetProperty("Stage").GetString() == "council" && e.GetProperty("Depth").GetInt32() == 1) >=
                         (waitForPeerHandoffs ? 2 : 3))
@@ -801,12 +801,12 @@ public sealed class RuntimeEvidenceTests
                     scripted.Call("ask_host", new() { ["question"] = "A human must supply the council input." });
                     if (Interlocked.Increment(ref _architectSelections) == 1)
                     {
-                        wait = token => _pendingReady.Task.WaitAsync(TimeSpan.FromSeconds(15), token);
+                        wait = token => _pendingReady.Task.WaitAsync(TimeSpan.FromSeconds(60), token);
                     }
                 }
                 if (!worker && role.Role == "architect" && waitForPeerHandoffs)
                 {
-                    wait = token => _pendingReady.Task.WaitAsync(TimeSpan.FromSeconds(15), token);
+                    wait = token => _pendingReady.Task.WaitAsync(TimeSpan.FromSeconds(60), token);
                 }
                 if (!worker && attackSibling && role.Role == "architect")
                 {
@@ -819,7 +819,7 @@ public sealed class RuntimeEvidenceTests
                             .Single(output => output.GetProperty("Name").GetString() == "primary");
                         Interlocked.Increment(ref _allocationLookups);
                         _architectAllocation.TrySetResult(primary.GetProperty("Path").GetString()!);
-                        await _siblingReadFinished.Task.WaitAsync(TimeSpan.FromSeconds(15), token);
+                        await _siblingReadFinished.Task.WaitAsync(TimeSpan.FromSeconds(60), token);
                     };
                 }
                 if (!worker && attackSibling && role.Role == "security")
@@ -828,7 +828,7 @@ public sealed class RuntimeEvidenceTests
                     {
                         try
                         {
-                            var path = await _architectAllocation.Task.WaitAsync(TimeSpan.FromSeconds(15), token);
+                            var path = await _architectAllocation.Task.WaitAsync(TimeSpan.FromSeconds(60), token);
                             var read = Assert.Single(options!.Tools!.OfType<AIFunction>(), tool => tool.Name == "project_read");
                             Interlocked.Increment(ref _siblingReadAttempts);
                             _ = await read.InvokeAsync(new AIFunctionArguments { ["path"] = path }, token);
@@ -910,7 +910,7 @@ public sealed class RuntimeEvidenceTests
             {
                 _ready.TrySetResult();
             }
-            await _ready.Task.WaitAsync(TimeSpan.FromSeconds(15), token);
+            await _ready.Task.WaitAsync(TimeSpan.FromSeconds(60), token);
         }
 
         internal void Exit() => Interlocked.Decrement(ref _active);

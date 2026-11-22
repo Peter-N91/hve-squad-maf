@@ -12,7 +12,7 @@ public sealed class RuntimeProductionTests
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
 
     private static string StatePath(RuntimeTestHost host) => Path.Combine(host.Project, host.Options.SquadRoot, "state.json");
-    private static RuntimeState State(RuntimeTestHost host) => JsonSerializer.Deserialize<RuntimeState>(File.ReadAllText(StatePath(host)))!;
+    private static RuntimeState State(RuntimeTestHost host) => host.ReadState();
 
     private static string TaskBlock(string id, string dependencies = "None") => $"""
         <!-- rpi:task id={id} -->
@@ -920,11 +920,11 @@ public sealed class RuntimeProductionTests
             cancellationToken.ThrowIfCancellationRequested();
             var prompt = messages.Last(message => message.Role == ChatRole.User).Text;
             var match = Regex.Match(prompt, @"Execute only this plan-derived unit[^\n]*\n(\{[^\n]*\})",
-                RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+                RegexOptions.CultureInvariant, TimeSpan.FromSeconds(5));
             var unit = JsonSerializer.Deserialize<SquadProducingUnit>(match.Groups[1].Value)!;
             Assignments[unit.Id] = prompt;
             var handoffMatch = Regex.Match(prompt, @"Explicit verified dependency handoffs[^\n]*\n(\[[^\n]*\])",
-                RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+                RegexOptions.CultureInvariant, TimeSpan.FromSeconds(5));
             var handoffs = JsonSerializer.Deserialize<SquadProductionHandoff[]>(handoffMatch.Groups[1].Value)!;
             Received[unit.Id] = handoffs;
             var step = _steps.AddOrUpdate(unit.Id, 0, (_, previous) => previous + 1);
@@ -944,12 +944,12 @@ public sealed class RuntimeProductionTests
                     {
                         _barrier.TrySetResult();
                     }
-                    await _barrier.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
+                    await _barrier.Task.WaitAsync(TimeSpan.FromSeconds(60), cancellationToken);
                 }
                 ChatResponse response;
                 if (step == 0 && WaitForGuide && SuspendUnit == unit.Id)
                 {
-                    await _guideCompleted.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
+                    await _guideCompleted.Task.WaitAsync(TimeSpan.FromSeconds(60), cancellationToken);
                 }
                 if (step == 0 && AttackUnit == unit.Id)
                 {

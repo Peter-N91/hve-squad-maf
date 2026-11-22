@@ -163,7 +163,7 @@ public sealed class SquadCatalog
 
         if (skills.Length == 1)
         {
-            var files = new Runtime.ProjectFiles(skills[0].DirectoryPath, 200_000);
+            var files = new Runtime.ProjectFiles(skills[0].DirectoryPath, Runtime.RuntimeResources.MaximumSkillResourceCharacters);
             const string resource = "references/roster-catalog.md";
             if (File.Exists(files.Resolve(resource)))
             {

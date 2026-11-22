@@ -90,8 +90,12 @@ public sealed partial class SquadRuntime
             {
                 return new(SquadRunStatus.ApprovalRequired, proposed, "ModelRouting approval is required before changing policy.");
             }
+            var previousMode = state.ModelRouting?.Mode ?? "off";
+            var description = proposed.Mode == "economy" && previousMode != "economy"
+                ? "Confirm switching to Economy Mode (Scope: all-roles): every routed role uses the cheapest host-available model with known nonnegative price and fit >= 2 inside its floor. Consequence floors, council and human gates are never weakened."
+                : "Confirm this exact persisted model policy and cells. This never lowers roster floors or authorizes effects.";
             if (!await _options.ApproveAsync(new(SquadApprovalKind.ModelRouting,
-                "Confirm this exact persisted model policy and cells. This never lowers roster floors or authorizes effects.",
+                description,
                 ModelRouting: proposed), cancellationToken).ConfigureAwait(false))
             {
                 return new(SquadRunStatus.ApprovalDenied, proposed, "Model routing update declined; state is unchanged.");
@@ -101,7 +105,10 @@ public sealed partial class SquadRuntime
             {
                 throw new InvalidDataException("Artifacts changed while model policy was awaiting approval.");
             }
-            _scribe.SetModelRouting(state, Roster, Catalog.RoutingRules, proposed, "Confirmed model routing update.");
+            var reason = proposed.Mode == "economy" && previousMode != "economy"
+                ? $"Economy Mode Accepted ({_options.TimeProvider.GetUtcNow():O}); Previous mode: {previousMode}; Scope: all-roles; Never weakened: consequence floors, council, intake and human gates."
+                : "Confirmed model routing update.";
+            _scribe.SetModelRouting(state, Roster, Catalog.RoutingRules, proposed, reason);
             _options.ModelRouting = CopyModelRouting(proposed);
             return new(SquadRunStatus.Completed, CopyModelRouting(proposed),
                 "Model policy confirmed. Empty or refused manual cells require human selection before dispatch.");
@@ -129,10 +136,10 @@ public sealed partial class SquadRuntime
 
     private static void ValidateModelRouting(SquadModelRoutingConfiguration configuration)
     {
-        if (configuration.Mode is not ("off" or "ranked" or "manual") || configuration.Models is null ||
+        if (configuration.Mode is not ("off" or "ranked" or "economy" or "manual") || configuration.Models is null ||
             configuration.Models.Keys.Any(string.IsNullOrWhiteSpace))
         {
-            throw new ArgumentException("Model routing requires off, ranked or manual and nonempty role keys.", nameof(configuration));
+            throw new ArgumentException("Model routing requires off, ranked, economy or manual and nonempty role keys.", nameof(configuration));
         }
     }
 
@@ -311,14 +318,18 @@ public sealed partial class SquadRuntime
         var models = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var choice in choices.Roles)
         {
-            if (proposed.Mode == "ranked")
+            if (proposed.Mode is "ranked" or "economy")
             {
                 var catalog = ModelCatalog();
                 var available = choices.AvailableModels;
-                var ranked = choices.Diagnostics.Count == 0 ? catalog!.Rank(available, choice.AssignmentClass, choice.Floor) : [];
-                if (ranked.Count > 0)
+                var selected = choices.Diagnostics.Count == 0
+                    ? (proposed.Mode == "economy"
+                        ? catalog!.RankEconomy(available, choice.AssignmentClass, choice.Floor)
+                        : catalog!.Rank(available, choice.AssignmentClass, choice.Floor))
+                    : [];
+                if (selected.Count > 0)
                 {
-                    models.Add(choice.Role, ranked[0].Id);
+                    models.Add(choice.Role, selected[0].Id);
                 }
             }
             else if (choice.CellStatus.StartsWith("valid", StringComparison.Ordinal))
@@ -360,12 +371,22 @@ public sealed partial class SquadRuntime
             if (checkpoint.ModelRouting is null)
             {
                 checkpoint.ModelRoutingInputSha256 = ModelPolicyHash(runtime._options.ModelRouting ?? desired);
-                var resolved = await runtime.ResolvePolicyCellsAsync(CopyModelRouting(desired), state, token).ConfigureAwait(false);
-                if (runtime._options.ModelRouting is not null && state.ModelRouting is not null &&
-                    !SamePolicy(state.ModelRouting, SafeModelRoutingCopy(desired)))
+                var enteringEconomy = desired.Mode == "economy" && state.ModelRouting?.Mode != "economy";
+                if (enteringEconomy && runtime._options.WatchInvocation is not null)
                 {
+                    throw _guard.Stop(SquadRunStatus.Blocked,
+                        "Unattended Watch cannot accept Economy Mode for the user; confirm economy routing interactively first.");
+                }
+                var resolved = await runtime.ResolvePolicyCellsAsync(CopyModelRouting(desired), state, token).ConfigureAwait(false);
+                if (enteringEconomy || (runtime._options.ModelRouting is not null && state.ModelRouting is not null &&
+                    !SamePolicy(state.ModelRouting, SafeModelRoutingCopy(desired))))
+                {
+                    var previousMode = state.ModelRouting?.Mode ?? "off";
+                    var prompt = enteringEconomy
+                        ? $"Confirm Economy Mode (Scope: all-roles; previous mode: {previousMode}): every routed role uses the cheapest host-available model with known nonnegative price and fit >= 2 inside its floor. Consequence floors, council and human gates are never weakened."
+                        : "Confirm the exact persisted model policy before this run dispatches. Effects still have separate gates.";
                     await ApproveAsync(new(SquadApprovalKind.ModelRouting,
-                        "Confirm the exact persisted model policy before this run dispatches. Effects still have separate gates.",
+                        prompt,
                         ModelRouting: CopyModelRouting(resolved))).ConfigureAwait(false);
                 }
                 if (desired.Mode == "off" && state.ModelRouting?.Mode is null or "off")
@@ -389,8 +410,10 @@ public sealed partial class SquadRuntime
                 }
                 else
                 {
-                    runtime._scribe.SetModelRouting(state, runtime.Roster, runtime.Catalog.RoutingRules, resolved,
-                        "Prepared model routing for the current host and confirmed roster.");
+                    var reason = enteringEconomy
+                        ? $"Economy Mode Accepted ({runtime._options.TimeProvider.GetUtcNow():O}); Previous mode: {state.ModelRouting?.Mode ?? "off"}; Scope: all-roles; Never weakened: consequence floors, council, intake and human gates."
+                        : "Prepared model routing for the current host and confirmed roster.";
+                    runtime._scribe.SetModelRouting(state, runtime.Roster, runtime.Catalog.RoutingRules, resolved, reason);
                 }
             }
             if (state.ModelRouting?.Mode == "manual")
@@ -632,6 +655,18 @@ public sealed partial class SquadRuntime
                     }
                 }
             }
+            else if (mode == "economy")
+            {
+                var economy = diagnostic is null ? catalog!.RankEconomy(available.Select(model => model.ModelId), assignment, role.ModelTier) : [];
+                id = economy.Count > 0 ? economy[0].Id : null;
+                if (id is null && diagnostic is null && runtime._options.AvailableModelsAsync is not null)
+                {
+                    throw _guard.Stop(SquadRunStatus.Blocked,
+                        $"economy unavailable: no host-available model with known nonnegative price and fit >= 2 is admitted for '{role.Role}' within floor '{role.ModelTier}'; economy never falls back to ranked.");
+                }
+                rationale = id is null ? "Route: economy; stale-catalog fallback" :
+                    $"Route: economy; class {assignment}; pick 1 of {economy.Count}; fit {economy[0].Fit[assignment]}; blended ${economy[0].BlendedUsdPerMillion.ToString("0.###", CultureInfo.InvariantCulture)}/1M; floor {role.ModelTier}";
+            }
             else
             {
                 var ranked = diagnostic is null ? catalog!.Rank(available.Select(model => model.ModelId), assignment, role.ModelTier) : [];
@@ -648,7 +683,7 @@ public sealed partial class SquadRuntime
                     rationale += "; unevaluated; model catalog supplies no tariff";
                 }
                 if (!_costPreview && (!state.ModelRouting.Models.TryGetValue(role.Role, out var current) || current != id ||
-                    mode == "ranked" && ReadModelCell(role) != id))
+                    mode is "ranked" or "economy" && ReadModelCell(role) != id))
                 {
                     using (runtime._scribe.SyncRoot.EnterScope())
                     {
@@ -767,7 +802,7 @@ public sealed partial class SquadRuntime
             using (runtime._scribe.SyncRoot.EnterScope())
             {
                 var text = runtime._files.Read(runtime._files.SquadRoot + "/team.md");
-                var mode = System.Text.RegularExpressions.Regex.Match(text, @"(?m)^Model routing:\s*(ranked|manual)\s*$",
+                var mode = System.Text.RegularExpressions.Regex.Match(text, @"(?m)^Model routing:\s*(ranked|economy|manual)\s*$",
                     System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
                 var tables = MarkdownTables.Parse(text).Where(table => table.Heading == "Members" &&
                     table.Headers.Contains("Role", StringComparer.Ordinal) &&

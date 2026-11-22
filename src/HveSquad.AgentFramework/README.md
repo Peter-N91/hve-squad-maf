@@ -5,14 +5,14 @@ description: Embed release-pinned native HVE Squad workflows in a consumer-owned
 
 ## Package status
 
-`HveSquad.AgentFramework` is independently versioned **0.1.0-preview.1** and is not
+`HveSquad.AgentFramework` is independently versioned **0.2.0-preview.1** and is not
 published to NuGet.org by this work. Use a reviewed local package feed. The package
-targets .NET 10 and uses Microsoft Agent Framework 1.23.0 and
-Microsoft.Extensions.AI 10.10.0.
+targets .NET 10 and uses Microsoft Agent Framework 1.28.0 and
+Microsoft.Extensions.AI 10.11.0.
 
-The supported official methodology is HVE Squad **v0.18.1** at
-`4c1f140f12f17abd3f200baa3afcb6d4c84bb6da`, with HVE Core dependency
-`18f5ac75a1556e49f1e90647a4816d17499e1d7f`.
+The supported official methodology is HVE Squad **v0.21.0** at
+`8921a36faf7402686bd3b2b64f6e70be70a0523c`, with HVE Core dependency
+`4e84aee97eb0019afcb19bceb63347e096803ed5`.
 `SupportedSquadRelease.Current` reads the embedded exact identity and all 279
 assertion rows. The inventory is not a claim of live-model quality or product
 deployment readiness.

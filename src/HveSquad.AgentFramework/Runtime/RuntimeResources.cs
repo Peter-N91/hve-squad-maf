@@ -8,6 +8,7 @@ namespace HveSquad.AgentFramework.Runtime;
 
 internal sealed class RuntimeResources
 {
+    internal const int MaximumSkillResourceCharacters = 2_000_000;
     private readonly SquadArtifacts _artifacts;
     private readonly SquadArtifactRoots _roots;
     private readonly SquadSkill _squad;
@@ -38,7 +39,7 @@ internal sealed class RuntimeResources
                     "The methodology installation must contain exactly one 'squad-floor.instructions.md'. Reacquire the complete pinned artifacts.");
             }
 
-            var planFiles = new ProjectFiles(planners[0].DirectoryPath, 200_000);
+            var planFiles = new ProjectFiles(planners[0].DirectoryPath, MaximumSkillResourceCharacters);
             _ = planFiles.Read("templates/implementation-plan.md");
             RequiresSeparatePlanDetails = File.Exists(planFiles.Resolve("templates/implementation-details.md"));
         }
@@ -174,14 +175,14 @@ internal sealed class RuntimeResources
 
     internal string? OptionalReference(string name)
     {
-        var files = new ProjectFiles(_squad.DirectoryPath, 200_000);
+        var files = new ProjectFiles(_squad.DirectoryPath, MaximumSkillResourceCharacters);
         var path = "references/" + name + ".md";
         return File.Exists(files.Resolve(path)) ? files.Read(path) : null;
     }
 
     internal string Reference(string name)
     {
-        return new ProjectFiles(_squad.DirectoryPath, 200_000).Read("references/" + name + ".md");
+        return new ProjectFiles(_squad.DirectoryPath, MaximumSkillResourceCharacters).Read("references/" + name + ".md");
     }
 
     private static bool IsSquadInstruction(SquadInstruction instruction) =>

@@ -353,6 +353,39 @@ internal sealed class RuntimeTestHost : IDisposable
         Client.Text("Coordinator synthesis");
     }
 
+    internal string StatePath => Path.Combine(Project, Options.SquadRoot, "state.json");
+
+    internal string ReadStateText() => ReadTextWithRetry(StatePath);
+
+    internal RuntimeState ReadState() =>
+        System.Text.Json.JsonSerializer.Deserialize<RuntimeState>(ReadStateText())!;
+
+    internal static string ReadTextWithRetry(string path)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                using var stream = new FileStream(path, FileMode.Open, FileAccess.Read,
+                    FileShare.ReadWrite | FileShare.Delete);
+                using var reader = new StreamReader(stream, System.Text.Encoding.UTF8);
+                var text = reader.ReadToEnd();
+                if (text.Length > 0)
+                {
+                    return text;
+                }
+                if (attempt >= 19)
+                {
+                    return text;
+                }
+            }
+            catch (Exception ex) when (attempt < 19 && ex is IOException or UnauthorizedAccessException)
+            {
+            }
+            Thread.Sleep(TimeSpan.FromMilliseconds(10 * (attempt + 1)));
+        }
+    }
+
     public void Dispose()
     {
         Client.Dispose();
@@ -366,9 +399,13 @@ internal sealed class RuntimeTestHost : IDisposable
                     Directory.Delete(Root, recursive: true);
                     break;
                 }
-                catch (IOException exception) when (OperatingSystem.IsWindows() &&
-                    (exception.HResult & 0xffff) == 32 && attempt < 20)
+                catch (Exception exception) when (OperatingSystem.IsWindows() &&
+                    exception is IOException or UnauthorizedAccessException)
                 {
+                    if (attempt >= 40)
+                    {
+                        break;
+                    }
                     Thread.Sleep(50);
                 }
             }

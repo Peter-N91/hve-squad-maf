@@ -78,7 +78,7 @@ internal sealed class ProjectFiles
         {
             parts = relocated.Split('/');
         }
-        var path = Path.GetFullPath(Path.Combine(_root, Path.Combine(parts)));
+        var path = Path.GetFullPath(Path.Combine([_root, .. parts]));
         if ((!allowRoot || !path.Equals(_root, PathComparison)) &&
             !path.StartsWith(_root + Path.DirectorySeparatorChar, PathComparison))
         {

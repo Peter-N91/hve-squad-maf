@@ -169,7 +169,7 @@ public sealed partial class SupportedSquadRelease
 
     [GeneratedRegex("^[a-fA-F0-9]{40}$", RegexOptions.CultureInvariant)]
     private static partial Regex CommitShaPattern();
-    [GeneratedRegex("^(SQ|RTE|PRF|CON|GATE|FD|DLR|DOC|GOV|LRN|PKG|SEM)-[0-9]{2,3}[a-z]?$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex("^[A-Z]{2,8}-[0-9]{2,3}[a-z]?$", RegexOptions.CultureInvariant)]
     private static partial Regex AssertionIdPattern();
 
     private sealed class ManifestDocument

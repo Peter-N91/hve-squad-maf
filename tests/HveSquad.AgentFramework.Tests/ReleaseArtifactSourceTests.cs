@@ -277,7 +277,7 @@ public class ReleaseArtifactSourceTests
         Assert.NotEmpty(report.Contracts.Roles);
         Assert.NotEmpty(report.Contracts.Modes);
         Assert.NotEmpty(report.Contracts.Schemas);
-        Assert.Equal(279, report.Contracts.Assertions.Count);
+        Assert.Equal(511, report.Contracts.Assertions.Count);
         Assert.Contains(report.PromotionBlockers, value => value.StartsWith("unknown-contract-drift:", StringComparison.Ordinal));
         Assert.Contains(report.PromotionBlockers, value => value.StartsWith("candidate-pin-not-reviewed:", StringComparison.Ordinal));
         Assert.Contains(report.PromotionBlockers, value => value.StartsWith("mechanical-conformance-unverified:", StringComparison.Ordinal));
@@ -587,6 +587,71 @@ public class ReleaseArtifactSourceTests
 
         Assert.Equal(expected, result.Status);
         Assert.Equal(before, fixture.Mutations);
+    }
+
+    [Fact]
+    public void GivenCompatibleCandidate_WhenPreparingAlignment_UpdatesCanonicalPinsContractsAndDocs()
+    {
+        using var fixture = new SyncFixture(candidate: true);
+        fixture.CoreReference = new string('c', 40);
+        var report = fixture.Report();
+        var workspace = Path.Combine(fixture.Host.Root, "alignment-workspace");
+        Directory.CreateDirectory(Path.Combine(workspace, "compatibility"));
+        Directory.CreateDirectory(Path.Combine(workspace, "src", "HveSquad.AgentFramework", "Sources"));
+        Directory.CreateDirectory(Path.Combine(workspace, "docs"));
+        var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+        File.Copy(Path.Combine(repoRoot, "compatibility", "hve-squad-release.json"),
+            Path.Combine(workspace, "compatibility", "hve-squad-release.json"));
+        File.Copy(Path.Combine(repoRoot, "compatibility", "hve-squad-conformance.json"),
+            Path.Combine(workspace, "compatibility", "hve-squad-conformance.json"));
+        File.Copy(Path.Combine(repoRoot, "src", "HveSquad.AgentFramework", "Sources", "ReleaseArtifactSource.cs"),
+            Path.Combine(workspace, "src", "HveSquad.AgentFramework", "Sources", "ReleaseArtifactSource.cs"));
+        File.WriteAllText(Path.Combine(workspace, "README.md"),
+            $"Baseline {SupportedSquadRelease.Current.Tag} at {SupportedSquadRelease.Current.CommitSha} with Core {SupportedSquadRelease.Current.HveCoreCommitSha}; legacy v0.16.2.");
+        File.WriteAllText(Path.Combine(workspace, "docs", "index.html"),
+            $"<main><code>{SupportedSquadRelease.Current.Tag}</code></main>");
+
+        var prepared = ReleaseAlignment.Prepare(workspace, report);
+
+        Assert.Equal("prepared", prepared.Status);
+        Assert.Contains("compatibility/hve-squad-release.json", prepared.ChangedFiles);
+        Assert.Contains("compatibility/hve-squad-conformance.json", prepared.ChangedFiles);
+        Assert.Contains("compatibility/hve-squad-contracts.json", prepared.ChangedFiles);
+        Assert.Contains("src/HveSquad.AgentFramework/Sources/ReleaseArtifactSource.cs", prepared.ChangedFiles);
+        Assert.Contains("README.md", prepared.ChangedFiles);
+        Assert.Contains("docs/index.html", prepared.ChangedFiles);
+        Assert.Contains($"TestedReleaseTag = \"{fixture.Release.Tag}\";",
+            File.ReadAllText(Path.Combine(workspace, "src", "HveSquad.AgentFramework", "Sources", "ReleaseArtifactSource.cs")),
+            StringComparison.Ordinal);
+        var readme = File.ReadAllText(Path.Combine(workspace, "README.md"));
+        Assert.Contains(fixture.Release.Tag, readme, StringComparison.Ordinal);
+        Assert.Contains(fixture.Release.CommitSha, readme, StringComparison.Ordinal);
+        Assert.Contains(fixture.CoreReference, readme, StringComparison.Ordinal);
+        Assert.Contains("v0.16.2", readme, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GivenUnmappedAssertions_WhenPreparingAlignment_ReturnsNeedsCodeChangesWithoutMutatingWorkspace()
+    {
+        using var fixture = new SyncFixture(candidate: true) { ExtraAssertion = true };
+        var report = fixture.Report();
+        var workspace = Path.Combine(fixture.Host.Root, "unmapped-workspace");
+        Directory.CreateDirectory(Path.Combine(workspace, "compatibility"));
+        Directory.CreateDirectory(Path.Combine(workspace, "src", "HveSquad.AgentFramework", "Sources"));
+        var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+        var manifestDest = Path.Combine(workspace, "compatibility", "hve-squad-release.json");
+        File.Copy(Path.Combine(repoRoot, "compatibility", "hve-squad-release.json"), manifestDest);
+        File.Copy(Path.Combine(repoRoot, "compatibility", "hve-squad-conformance.json"),
+            Path.Combine(workspace, "compatibility", "hve-squad-conformance.json"));
+        File.Copy(Path.Combine(repoRoot, "src", "HveSquad.AgentFramework", "Sources", "ReleaseArtifactSource.cs"),
+            Path.Combine(workspace, "src", "HveSquad.AgentFramework", "Sources", "ReleaseArtifactSource.cs"));
+        var originalBytes = File.ReadAllBytes(manifestDest);
+
+        var prepared = ReleaseAlignment.Prepare(workspace, report);
+
+        Assert.Equal("needs-code-changes", prepared.Status);
+        Assert.Empty(prepared.ChangedFiles);
+        Assert.Equal(originalBytes, File.ReadAllBytes(manifestDest));
     }
 
     private sealed class SyncFixture : HttpMessageHandler

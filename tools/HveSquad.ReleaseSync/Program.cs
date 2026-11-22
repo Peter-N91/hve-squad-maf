@@ -13,13 +13,13 @@ internal static class Program
         {
             if (arguments.Length == 0 || arguments is ["--help"])
             {
-                Console.WriteLine("HveSquad.ReleaseSync: target | inspect | capture-contracts | capture-observations | verify-evidence | verify-conformance | verify | propose | status");
-                Console.WriteLine("Options: --workspace PATH --output PATH --head SHA --repository OWNER/REPO --report PATH --trx PATH --observations PATH --package-proof PATH");
-                Console.WriteLine("Flags: --evaluate-current --require-candidate --allow-write. Only propose --allow-write can mutate one candidate branch/PR.");
+                Console.WriteLine("HveSquad.ReleaseSync: target | inspect | prepare-alignment | capture-contracts | capture-observations | verify-evidence | verify-conformance | verify | propose | status");
+                Console.WriteLine("Options: --workspace PATH --output PATH --head SHA --expected-tag vX.Y.Z --repository OWNER/REPO --report PATH --trx PATH --observations PATH --package-proof PATH");
+                Console.WriteLine("Flags: --evaluate-current --require-candidate --allow-write --aligned --supersede-stale. Only propose --allow-write can mutate one candidate branch/PR.");
                 return 0;
             }
             var command = arguments[0];
-            if (command is not ("target" or "inspect" or "capture-contracts" or "capture-observations" or "verify-evidence" or "verify-conformance" or "verify" or "propose" or "status"))
+            if (command is not ("target" or "inspect" or "prepare-alignment" or "capture-contracts" or "capture-observations" or "verify-evidence" or "verify-conformance" or "verify" or "propose" or "status"))
             {
                 throw new ArgumentException("Unknown release-sync command. Use --help.");
             }
@@ -40,15 +40,23 @@ internal static class Program
                 new SquadRelease(SupportedSquadRelease.Current.Tag, SupportedSquadRelease.Current.CommitSha);
             var goldenPath = Path.Combine(workspace, "compatibility", "observations", goldenRelease.Tag + ".json");
             var head = options.Get("head");
-            if (options.Flag("allow-write") && command != "propose")
+            if ((options.Flag("allow-write") || options.Flag("aligned") || options.Flag("supersede-stale")) && command != "propose")
             {
-                throw new ArgumentException("--allow-write is valid only for the explicit propose command.");
+                throw new ArgumentException("--allow-write, --aligned and --supersede-stale are valid only for the explicit propose command.");
             }
             if (command == "target")
             {
-                var target = Target(candidatePath, options.Flag("require-candidate"));
+                var target = Target(candidatePath, options.Flag("require-candidate"), options.Get("expected-tag"));
                 Write(output, target);
                 Console.WriteLine("Exact validation target: " + target.Tag + " at " + target.CommitSha);
+                return 0;
+            }
+            if (command == "prepare-alignment")
+            {
+                var report = ReleaseEvaluation.ReadJson<ReleaseEvaluationReport>(options.Required("report"));
+                var prepared = ReleaseAlignment.Prepare(workspace, report);
+                Write(output, prepared);
+                Console.WriteLine("Release alignment preparation: " + prepared.Status + ". " + prepared.Diagnostic);
                 return 0;
             }
             if (command == "capture-observations")
@@ -64,7 +72,7 @@ internal static class Program
             }
             if (command == "verify-evidence")
             {
-                ReleaseEvaluation.VerifyEvidence(Target(candidatePath, options.Flag("require-candidate")),
+                ReleaseEvaluation.VerifyEvidence(Target(candidatePath, options.Flag("require-candidate"), options.Get("expected-tag")),
                     ReleaseEvaluation.ReadObservations(observationPath), options.Required("trx"));
                 Console.WriteLine("Saved actual release evidence is complete and identity-bound. This does not verify a clean candidate head, reviewed contracts or promotion permission.");
                 return 0;
@@ -75,7 +83,7 @@ internal static class Program
                 {
                     await ReleaseEvaluation.AssertCheckoutAsync(workspace, head, default).ConfigureAwait(false);
                 }
-                var report = ReleaseConformance.Verify(workspace, Target(candidatePath, options.Flag("require-candidate")),
+                var report = ReleaseConformance.Verify(workspace, Target(candidatePath, options.Flag("require-candidate"), options.Get("expected-tag")),
                     ReleaseEvaluation.ReadObservations(observationPath), options.Required("trx"), options.Required("package-proof"), head);
                 if (head is not null)
                 {
@@ -103,33 +111,36 @@ internal static class Program
                 }
                 var report = ReleaseEvaluation.ReadJson<ReleaseEvaluationReport>(options.Required("report"));
                 var proposals = new ReleaseProposals(client, options.Required("repository"));
+                var alignedFiles = command == "propose" && options.Flag("aligned")
+                    ? ReleaseAlignment.CollectAlignedFiles(workspace, report)
+                    : null;
                 var result = command == "propose"
-                    ? await proposals.ProposeAsync(report, options.Flag("allow-write"), default).ConfigureAwait(false)
+                    ? await proposals.ProposeAsync(report, options.Flag("allow-write"), default, alignedFiles, options.Flag("supersede-stale")).ConfigureAwait(false)
                     : await proposals.StatusAsync(report, default).ConfigureAwait(false);
                 Write(output, result);
                 Console.WriteLine("Release proposal: " + result.Status + ". " + result.Diagnostic);
                 return result.Status is "checks-failed" or "checks-unavailable" or "proposal-missing" or
                     "closed-requires-maintainer" or "merged-baseline-unpromoted" ? 1 : 0;
             }
-            if (command == "verify")
+            if (command == "verify" && head is not null)
             {
-                await ReleaseEvaluation.AssertCheckoutAsync(workspace, options.Required("head"), default).ConfigureAwait(false);
+                await ReleaseEvaluation.AssertCheckoutAsync(workspace, head, default).ConfigureAwait(false);
             }
             var golden = File.Exists(contractPath) ? ReleaseEvaluation.ReadJson<ReleaseContractSnapshot>(contractPath) : null;
-            var requested = command == "verify" ? Target(candidatePath, options.Flag("require-candidate"))
+            var requested = command == "verify" ? Target(candidatePath, options.Flag("require-candidate"), options.Get("expected-tag"))
                 : command == "capture-contracts" ? new SquadRelease(SupportedSquadRelease.Current.Tag, SupportedSquadRelease.Current.CommitSha) : null;
             var observed = ReleaseEvaluation.ReadObservations(observationPath);
-            var baselineObserved = ReleaseEvaluation.ReadObservations(goldenPath);
+            var baselineObserved = File.Exists(goldenPath) ? ReleaseEvaluation.ReadObservations(goldenPath) : [];
             if (baselineObserved.Any(observation => observation.ReleaseTag != goldenRelease.Tag ||
                 observation.ReleaseCommitSha != goldenRelease.CommitSha))
             {
                 throw new InvalidDataException("The golden observations do not belong to the exact prior last-good release.");
             }
             var inspected = await evaluation.InspectAsync(command == "capture-contracts" ? null : golden, head,
-                options.Flag("evaluate-current"), requested, observed, baselineObserved).ConfigureAwait(false);
-            if (command == "verify")
+                options.Flag("evaluate-current"), requested, observed, baselineObserved.Length == 0 ? null : baselineObserved).ConfigureAwait(false);
+            if (command == "verify" && head is not null)
             {
-                await ReleaseEvaluation.AssertCheckoutAsync(workspace, options.Required("head"), default).ConfigureAwait(false);
+                await ReleaseEvaluation.AssertCheckoutAsync(workspace, head, default).ConfigureAwait(false);
             }
             if (command == "capture-contracts")
             {
@@ -157,18 +168,30 @@ internal static class Program
             }
             return 0;
         }
-        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException or
-            UnauthorizedAccessException or JsonException or SquadArtifactsNotFoundException or SquadHumanTransportException)
+        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or InvalidOperationException or
+            IOException or UnauthorizedAccessException or JsonException or SquadArtifactsNotFoundException or SquadHumanTransportException)
         {
             Console.Error.WriteLine("Release sync failed: " + exception.Message);
             return 1;
         }
     }
 
-    internal static SquadRelease Target(string path, bool requireCandidate)
+    internal static SquadRelease Target(string path, bool requireCandidate, string? expectedTag = null)
     {
         if (!File.Exists(path))
         {
+            if (expectedTag is not null)
+            {
+                if (!ReleaseArtifactSource.IsStableTag(expectedTag))
+                {
+                    throw new ArgumentException("The expected candidate tag is not a stable semantic-version tag.", nameof(expectedTag));
+                }
+                if (SupportedSquadRelease.Current.Tag != expectedTag)
+                {
+                    throw new InvalidDataException("The automation candidate branch neither carries candidate-release.json nor promotes the expected release in hve-squad-release.json.");
+                }
+                return new(SupportedSquadRelease.Current.Tag, SupportedSquadRelease.Current.CommitSha);
+            }
             if (requireCandidate)
             {
                 throw new InvalidDataException("The automation candidate branch is missing its exact proposed release file; a baseline run cannot substitute.");
@@ -177,6 +200,10 @@ internal static class Program
         }
         var descriptor = ReleaseEvaluation.ReadJson<ReleaseCandidate>(path);
         ReleaseProposals.ValidateDescriptor(descriptor);
+        if (expectedTag is not null && descriptor.Release.Tag != expectedTag)
+        {
+            throw new InvalidDataException("The candidate branch descriptor disagrees with its branch tag.");
+        }
         return descriptor.Release;
     }
 
@@ -221,14 +248,14 @@ internal static class Program
                     throw new ArgumentException("Release-sync options must be explicit structural arguments.");
                 }
                 var key = argument[2..];
-                if (key is "evaluate-current" or "allow-write" or "require-candidate")
+                if (key is "evaluate-current" or "allow-write" or "require-candidate" or "aligned" or "supersede-stale")
                 {
                     if (!result._values.TryAdd(key, null))
                     {
                         throw new ArgumentException("A release-sync flag was repeated.");
                     }
                 }
-                else if (key is "workspace" or "output" or "head" or "repository" or "report" or "trx" or "observations" or "package-proof")
+                else if (key is "workspace" or "output" or "head" or "expected-tag" or "repository" or "report" or "trx" or "observations" or "package-proof")
                 {
                     if (++index >= arguments.Length || string.IsNullOrWhiteSpace(arguments[index]) ||
                         arguments[index].StartsWith("--", StringComparison.Ordinal) || !result._values.TryAdd(key, arguments[index]))

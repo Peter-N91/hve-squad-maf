@@ -16,20 +16,25 @@ public sealed class SupportedSquadReleaseTests
     public void GivenCanonicalManifest_WhenLoaded_AllNumberedAssertionsHaveOwnership()
     {
         var manifest = SupportedSquadRelease.Current;
-        Assert.Equal(279, manifest.Assertions.Count);
-        Assert.Equal(279, manifest.Assertions.Select(a => a.Id).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(511, manifest.Assertions.Count);
+        Assert.Equal(511, manifest.Assertions.Select(a => a.Id).Distinct(StringComparer.Ordinal).Count());
         Assert.Contains(manifest.Assertions, assertion => assertion.Id == "SQ-03a");
         Assert.Contains(manifest.Assertions, assertion => assertion.Id == "SQ-20a");
+        Assert.Contains(manifest.Assertions, assertion => assertion.Id == "SQ-35");
         Assert.Contains(manifest.Assertions, assertion => assertion.Id == "FD-15a");
+        Assert.Contains(manifest.Assertions, assertion => assertion.Id == "CONN-01");
+        Assert.Contains(manifest.Assertions, assertion => assertion.Id == "COACH-01");
+        Assert.Contains(manifest.Assertions, assertion => assertion.Id == "SDOC-01");
+        Assert.Contains(manifest.Assertions, assertion => assertion.Id == "STUDIO-01");
         Assert.All(manifest.Assertions, a =>
         {
             Assert.NotEmpty(a.ImplementationTasks);
             Assert.Equal("HveSquad.AgentFramework.Tests", a.VerificationOwner);
             Assert.NotEmpty(a.Adaptation);
         });
-        Assert.Equal(7, manifest.Assertions.Count(a => a.Disposition == SquadAssertionDisposition.SemanticComparison));
+        Assert.Equal(27, manifest.Assertions.Count(a => a.Disposition == SquadAssertionDisposition.SemanticComparison));
         Assert.Equal("verified", manifest.ConformanceStatus);
-        Assert.Equal("18f5ac75a1556e49f1e90647a4816d17499e1d7f", manifest.HveCoreCommitSha);
+        Assert.Equal("4e84aee97eb0019afcb19bceb63347e096803ed5", manifest.HveCoreCommitSha);
     }
 
     [Fact]
@@ -48,7 +53,7 @@ public sealed class SupportedSquadReleaseTests
         Assert.True(manifest.Matches(new(manifest.Tag, manifest.CommitSha)));
         Assert.False(manifest.Matches(null));
         Assert.False(manifest.Matches(new(manifest.Tag, new string('a', 40))));
-        Assert.False(manifest.Matches(new("v0.19.0", manifest.CommitSha)));
+        Assert.False(manifest.Matches(new("v0.99.0", manifest.CommitSha)));
     }
 
     [Theory]
@@ -78,7 +83,7 @@ public sealed class SupportedSquadReleaseTests
         catalog = catalog with
         {
             Assertions = defect == "missing" ? rows.AsSpan(1).ToArray() : rows,
-            Release = defect == "wrong-release" ? new("v0.19.0", new string('a', 40)) : catalog.Release,
+            Release = defect == "wrong-release" ? new("v0.99.0", new string('a', 40)) : catalog.Release,
         };
 
         if (defect == "valid")
@@ -157,7 +162,7 @@ public sealed class SupportedSquadReleaseTests
         var consumer = JsonSerializer.SerializeToNode(new
         {
             status = "passed",
-            libraryVersion = "0.1.0-preview.1+synthetic-verifier-control",
+            libraryVersion = "0.2.0-preview.1+synthetic-verifier-control",
             release = new { supported.Tag, supported.CommitSha, assertions = supported.Assertions.Count },
             sameRunResume = true,
             helperAcquisitions = 0,
@@ -177,7 +182,7 @@ public sealed class SupportedSquadReleaseTests
             case "format": consumer["actualFormats"] = new JsonArray("md"); break;
             case "wrong-numeric-type": consumer["helperAcquisitions"] = "0"; break;
         }
-        var package = new NativePackageEvidence(1, "passed", "0.1.0-preview.1", new string('A', 64),
+        var package = new NativePackageEvidence(1, "passed", "0.2.0-preview.1", new string('A', 64),
             defect == "partial-repack" ? new string('B', 64) : new string('A', 64), new string('C', 64),
             defect == "wrong-manifest" ? new string('D', 64) : Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(manifest))),
             JsonSerializer.SerializeToElement(consumer));

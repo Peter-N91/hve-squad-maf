@@ -366,7 +366,7 @@ public sealed partial class SquadRuntime
         ArtifactOrigin = Provenance.Origin,
         SquadRoot = _files.SquadRoot,
         Notify = CopyNotifications(_options.Notifications),
-        ModelRouting = _options.ModelRouting is null ? null : SafeModelRoutingCopy(_options.ModelRouting),
+        ModelRouting = _options.ModelRouting is { Mode: not "economy" } ? SafeModelRoutingCopy(_options.ModelRouting) : null,
         Consumption = _options.Consumption is null ? null : ConsumptionMath.Copy(_options.Consumption),
     };
 

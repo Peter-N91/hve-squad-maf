@@ -418,13 +418,13 @@ public sealed class RuntimeBoundaryTests
                 File.ReadAllText(Path.Combine(squadSkill.DirectoryPath, "references", "model-catalog.md")),
                 File.ReadAllText(Path.Combine(squadSkill.DirectoryPath, "references", "model-routing.md")));
             var advertised = catalog.Models.Select(model => model.Id).ToArray();
-            Assert.Equal("claude-opus-5.5", catalog.Rank(advertised, "research", "default")[0].Id);
-            Assert.Equal("gpt-5.6-sol", catalog.Rank(advertised, "planning", "default")[0].Id);
-            Assert.Equal("gpt-5.3-codex", catalog.Rank(advertised, "implementation", "default")[0].Id);
+            Assert.Equal("gpt-6.2-sol", catalog.Rank(advertised, "research", "default")[0].Id);
+            Assert.Equal("gemini-4-argon", catalog.Rank(advertised, "planning", "default")[0].Id);
+            Assert.Equal("mai-code-2-flash", catalog.Rank(advertised, "implementation", "default")[0].Id);
             Assert.Equal("gpt-6-sol", catalog.Rank(advertised, "review", "fast")[0].Id);
-            Assert.Equal("gpt-5.5", catalog.Rank(advertised, "council", "default")[0].Id);
-            Assert.Equal("claude-sonnet-5.5", catalog.Rank(advertised, "intake", "fast")[0].Id);
-            Assert.Equal("claude-haiku-4.5", catalog.Rank(advertised, "bookkeeping", "fast")[0].Id);
+            Assert.Equal("gemini-4-carbon", catalog.Rank(advertised, "council", "default")[0].Id);
+            Assert.Equal("gpt-6.1-terra", catalog.Rank(advertised, "intake", "fast")[0].Id);
+            Assert.Equal("claude-haiku-5.5", catalog.Rank(advertised, "bookkeeping", "fast")[0].Id);
         }
         host.SinglePlan = !File.Exists(Path.Combine(planSkill.DirectoryPath, "templates", "implementation-details.md"));
         var inputs = intakeAndCouncil ? new[] { "requirements.txt" } : [];
@@ -509,7 +509,9 @@ public sealed class RuntimeBoundaryTests
         Assert.Equal(host.SinglePlan ? 1 : 2, Assert.Single(result.Evidence, e => e.Stage == "plan").Artifacts!.Count);
         if (intakeAndCouncil)
         {
-            Assert.Null(runtime.Roster.Resolve("intake-validator")!.DeliverableRoot);
+            var expectedIntakeRoot = runtime.Provenance.Release?.Tag == SupportedSquadRelease.Current.LegacyAdvisoryRelease
+                ? null : ".copilot-tracking/reviews/";
+            Assert.Equal(expectedIntakeRoot, runtime.Roster.Resolve("intake-validator")!.DeliverableRoot);
             Assert.Null(runtime.Roster.Resolve("cost-manager")!.DeliverableRoot);
             Assert.All(result.Evidence.Where(e => e.Role is "intake-validator" or "cost-manager"), e =>
             {

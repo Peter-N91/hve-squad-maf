@@ -48,6 +48,9 @@ if ($MyInvocation.InvocationName -ne '.') {
         foreach ($Name in @('HveSquad.PackageConsumer.csproj', 'Program.cs', 'NuGet.Config')) {
             Copy-Item -LiteralPath (Join-Path $Repository "samples\HveSquad.PackageConsumer\$Name") -Destination (Join-Path $WorkRoot $Name)
         }
+        if (Test-Path -LiteralPath (Join-Path $Repository 'global.json')) {
+            Copy-Item -LiteralPath (Join-Path $Repository 'global.json') -Destination (Join-Path $WorkRoot 'global.json')
+        }
         [xml]$Project = Get-Content -LiteralPath (Join-Path $Repository 'src\HveSquad.AgentFramework\HveSquad.AgentFramework.csproj') -Raw
         $Version = [string]$Project.Project.PropertyGroup.Version
         $Package = Join-Path $Feed "HveSquad.AgentFramework.$Version.nupkg"
