@@ -32,10 +32,10 @@ public sealed class SampleTests
     public void GivenExplicitOrganizationForkProposal_WhenParsing_PreservesThePublicTargetWithoutGrantingAConnector()
     {
         var command = SampleCommand.Parse(["--learn", "promote", "--project", ".", "--target", "upstream",
-            "--repository", "Peter-N91/hve-squad", "--destination", "Example-Org/hve-squad",
+            "--repository", "microsoft/hve-squad", "--destination", "Example-Org/hve-squad",
             "--prepared", "outputs/prepared.json", "--fork-organization", "true"]).Helper!;
 
-        Assert.Equal(new SquadLearningTarget("upstream", "peter-n91/hve-squad", "example-org/hve-squad", true), command.Target);
+        Assert.Equal(new SquadLearningTarget("upstream", "microsoft/hve-squad", "example-org/hve-squad", true), command.Target);
         Assert.False(command.GitHubConnector);
     }
 

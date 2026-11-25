@@ -21,7 +21,7 @@ public sealed class ProjectArtifactSource : SquadArtifactSource
             ?? throw new SquadArtifactsNotFoundException(
                 $"No installed squad artifacts found at or above '{_startDirectory}'. " +
                 "Install the package into the project first, for example: " +
-                "apm install \"Peter-N91/hve-squad#vX.Y.Z\" --target copilot");
+                "apm install \"microsoft/hve-squad#vX.Y.Z\" --target copilot");
 
         return ValueTask.FromResult(Describe(projectRoot));
     }

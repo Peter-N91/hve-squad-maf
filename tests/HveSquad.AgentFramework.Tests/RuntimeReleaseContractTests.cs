@@ -133,7 +133,7 @@ public sealed class RuntimeReleaseContractTests
                     Assert.Equal(fallback, expected);
                 }
             }
-            foreach (Match match in Regex.Matches(charter.Instructions, @"`(references/[A-Za-z0-9_./-]+\.md)`",
+            foreach (Match match in Regex.Matches(charter.Instructions, @"`(?:squad/)?(references/[A-Za-z0-9_./-]+\.md)`",
                 RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)))
             {
                 var providers = artifacts.Skills.Where(skill =>
@@ -164,10 +164,69 @@ public sealed class RuntimeReleaseContractTests
         Assert.False(connector.DisableModelInvocation);
         Assert.True(File.Exists(Path.Combine(squad.DirectoryPath, "extensions", "hve-squad-studio", "copilot-extension.json")));
         var resources = new RuntimeResources(artifacts, roots);
-        foreach (var reference in new[] { "00-index", "profiles-and-packs", "operating-procedure", "gates-and-modes", "seed-templates", "scribe-procedure", "entry-schemas" })
+        foreach (var reference in new[] { "00-index", "profiles-and-packs", "operating-procedure", "gates-and-modes", "seed-templates", "scribe-procedure", "entry-schemas", "responsible-use" })
         {
             Assert.False(string.IsNullOrWhiteSpace(resources.Reference(reference)));
         }
+        Assert.True(resources.Paths.ContainsKey(RuntimeResources.ResponsibleUseContractPath));
+        Assert.Contains("Responsible Use", resources.ReadInstruction(RuntimeResources.ResponsibleUseContractPath), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GivenInstalledResponsibleUsePolicy_WhenDispatchingIsolatedWorkers_ForwardsBriefRuleAndAllowsDirectWorkerLocalRead()
+    {
+        using var host = new RuntimeTestHost();
+        host.Write("skills/apm-renamed-squad/references/responsible-use.md",
+            "---\ndescription: \"Responsible Use\"\n---\n# Responsible Use\n\nEngineering assistance only; no independent reporting.");
+        host.Options.SkillFilter = (_, skill) => skill.Name != "squad";
+        var coordinatorSawBrief = false;
+        var workerReadPolicy = false;
+        host.Client.Steps.Enqueue((_, options) =>
+        {
+            Assert.Contains("worker RAI: policy=squad/references/responsible-use.md; dataRule=" + RuntimeResources.SourceDataAuthorityRule,
+                options!.Instructions, StringComparison.Ordinal);
+            coordinatorSawBrief = true;
+            return RuntimeTestHost.Function("run_focused", new()
+            {
+                ["stage"] = "research",
+                ["inputPaths"] = Array.Empty<string>(),
+                ["requiresCouncil"] = false,
+                ["includesAiRisk"] = false,
+            });
+        });
+        host.Client.Steps.Enqueue((_, options) =>
+        {
+            Assert.Contains("worker RAI: policy=squad/references/responsible-use.md; dataRule=" + RuntimeResources.SourceDataAuthorityRule,
+                options!.Instructions, StringComparison.Ordinal);
+            return RuntimeTestHost.Function("read_instruction", new()
+            {
+                ["fileName"] = RuntimeResources.ResponsibleUseContractPath,
+            });
+        });
+        host.Client.Steps.Enqueue((messages, _) =>
+        {
+            Assert.Contains(messages.SelectMany(m => m.Contents).OfType<Microsoft.Extensions.AI.FunctionResultContent>(),
+                r => r.Result?.ToString()?.Contains("Engineering assistance only; no independent reporting.", StringComparison.Ordinal) == true);
+            workerReadPolicy = true;
+            return RuntimeTestHost.Function("write_artifact", new() { ["content"] = "# Research\n\nBounded local findings." });
+        });
+        host.Client.Steps.Enqueue((_, _) => RuntimeTestHost.Function("complete_stage", new()
+        {
+            ["summary"] = "Research completed.",
+            ["verdict"] = "Completed",
+            ["risk"] = "Low",
+            ["blockingIssues"] = 0,
+        }));
+        host.Client.Text("Worker research complete.");
+        host.Client.Text("Focused research complete.");
+        using var runtime = await host.CreateAsync();
+
+        var result = await runtime.RunAsync("Inspect the bounded synthetic case.");
+
+        Assert.Equal(SquadRunStatus.ResearchCompleted, result.Status);
+        Assert.True(coordinatorSawBrief);
+        Assert.True(workerReadPolicy);
+        Assert.True(runtime.ArtifactPathMap.ContainsKey(RuntimeResources.ResponsibleUseContractPath));
     }
 
     [Theory]

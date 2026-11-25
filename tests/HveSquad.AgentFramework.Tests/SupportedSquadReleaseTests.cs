@@ -16,8 +16,9 @@ public sealed class SupportedSquadReleaseTests
     public void GivenCanonicalManifest_WhenLoaded_AllNumberedAssertionsHaveOwnership()
     {
         var manifest = SupportedSquadRelease.Current;
-        Assert.Equal(511, manifest.Assertions.Count);
-        Assert.Equal(511, manifest.Assertions.Select(a => a.Id).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal("microsoft/hve-squad", manifest.Repository);
+        Assert.Equal(518, manifest.Assertions.Count);
+        Assert.Equal(518, manifest.Assertions.Select(a => a.Id).Distinct(StringComparer.Ordinal).Count());
         Assert.Contains(manifest.Assertions, assertion => assertion.Id == "SQ-03a");
         Assert.Contains(manifest.Assertions, assertion => assertion.Id == "SQ-20a");
         Assert.Contains(manifest.Assertions, assertion => assertion.Id == "SQ-35");
@@ -26,6 +27,7 @@ public sealed class SupportedSquadReleaseTests
         Assert.Contains(manifest.Assertions, assertion => assertion.Id == "COACH-01");
         Assert.Contains(manifest.Assertions, assertion => assertion.Id == "SDOC-01");
         Assert.Contains(manifest.Assertions, assertion => assertion.Id == "STUDIO-01");
+        Assert.Contains(manifest.Assertions, assertion => assertion.Id == "RAI-01");
         Assert.All(manifest.Assertions, a =>
         {
             Assert.NotEmpty(a.ImplementationTasks);
@@ -34,7 +36,9 @@ public sealed class SupportedSquadReleaseTests
         });
         Assert.Equal(27, manifest.Assertions.Count(a => a.Disposition == SquadAssertionDisposition.SemanticComparison));
         Assert.Equal("verified", manifest.ConformanceStatus);
-        Assert.Equal("4e84aee97eb0019afcb19bceb63347e096803ed5", manifest.HveCoreCommitSha);
+        var contracts = ReleaseEvaluation.ReadJson<ReleaseContractSnapshot>(
+            Path.Combine(Workspace(), "compatibility", "hve-squad-contracts.json"));
+        Assert.Equal(contracts.HveCoreCommitSha, manifest.HveCoreCommitSha);
     }
 
     [Fact]
@@ -230,7 +234,7 @@ public sealed class SupportedSquadReleaseTests
 
         var roots = await source.ResolveAsync();
 
-        Assert.Equal($"/repos/Peter-N91/hve-squad/releases/tags/{manifest.Tag}", handler.Paths[0]);
+        Assert.Equal($"/repos/microsoft/hve-squad/releases/tags/{manifest.Tag}", handler.Paths[0]);
         Assert.Equal($"{manifest.Repository}#{manifest.CommitSha}", acquired);
         Assert.True(manifest.Matches(roots.Release));
     }

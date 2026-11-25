@@ -31,7 +31,7 @@ public sealed class ReleaseTestHttpClientTests
         }));
         var source = new ReleaseArtifactSource("v0.16.2", httpClient: client, acquisitionFactory: (spec, _) =>
         {
-            Assert.Equal("Peter-N91/hve-squad#0123456789abcdef0123456789abcdef01234567", spec);
+            Assert.Equal("microsoft/hve-squad#0123456789abcdef0123456789abcdef01234567", spec);
             return new FixedSource();
         });
 

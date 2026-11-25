@@ -15,12 +15,12 @@ public delegate SquadArtifactSource SquadArtifactAcquisitionFactory(string packa
 /// </summary>
 public sealed partial class ReleaseArtifactSource : SquadArtifactSource
 {
-    public const string RepositoryOwner = "Peter-N91";
+    public const string RepositoryOwner = "microsoft";
     public const string RepositoryName = "hve-squad";
     public const string Repository = RepositoryOwner + "/" + RepositoryName;
 
     /// <summary>API mirror of the canonical production baseline, validated by its embedded manifest.</summary>
-    public const string TestedReleaseTag = "v0.21.0";
+    public const string TestedReleaseTag = "v0.22.0";
 
     private const string GitHubApiRoot = "https://api.github.com";
     private const int MaximumResponseCharacters = 64 * 1024;

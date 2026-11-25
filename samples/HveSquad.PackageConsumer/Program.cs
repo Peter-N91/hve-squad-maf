@@ -34,7 +34,7 @@ static async Task VerifyAsync(string project, string expectedVersion)
 {
     Directory.CreateDirectory(project);
     var supported = SupportedSquadRelease.Current;
-    Require(supported.Assertions.Count == 511 && !string.IsNullOrWhiteSpace(supported.ConformanceStatus),
+    Require(supported.Assertions.Count == 518 && !string.IsNullOrWhiteSpace(supported.ConformanceStatus),
         "The embedded release inventory or explicit conformance status is missing.");
     var version = typeof(SquadRuntime).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
     Require(version == expectedVersion || version?.StartsWith(expectedVersion + "+", StringComparison.Ordinal) == true,

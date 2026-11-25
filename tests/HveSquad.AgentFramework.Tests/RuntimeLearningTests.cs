@@ -19,7 +19,7 @@ namespace HveSquad.AgentFramework.Tests;
 public sealed class RuntimeLearningTests
 {
     private const string FakeCredential = "fictional-sample-credential";
-    private const string SourceRepository = "peter-n91/hve-squad";
+    private const string SourceRepository = "microsoft/hve-squad";
     private const string ForkRepository = "learning-consumer/hve-squad";
     private const string TenantRepository = "fixture-tenant/reviewed-learnings";
     private static readonly SquadLearningInvocation Human = new("human:event-01");

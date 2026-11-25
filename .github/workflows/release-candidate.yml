@@ -87,7 +87,7 @@ jobs:
         env:
           HVE_SQUAD_REQUIRE_RELEASE_TESTS: 'true'
           HVE_SQUAD_RELEASE_GITHUB_TOKEN: ${{ github.token }}
-          GITHUB_APM_PAT_PETER_N91: ${{ github.token }}
+          GITHUB_APM_PAT_MICROSOFT: ${{ github.token }}
           APM_ALLOW_PROTOCOL_FALLBACK: '1'
           HVE_SQUAD_OBSERVATION_ATTEMPT: ${{ github.run_attempt }}
         run: |
@@ -104,6 +104,7 @@ jobs:
           HVE_SQUAD_RELEASE_COMMIT: 'a941195c36dfb6181453f51ec4638b085ca3b3ad'
           HVE_SQUAD_REQUIRE_RELEASE_TESTS: 'true'
           HVE_SQUAD_RELEASE_GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_APM_PAT_MICROSOFT: ${{ github.token }}
           GITHUB_APM_PAT_PETER_N91: ${{ github.token }}
           APM_ALLOW_PROTOCOL_FALLBACK: '1'
         run: |
@@ -122,7 +123,7 @@ jobs:
         shell: pwsh
         env:
           HVE_SQUAD_RELEASE_GITHUB_TOKEN: ${{ github.token }}
-          GITHUB_APM_PAT_PETER_N91: ${{ github.token }}
+          GITHUB_APM_PAT_MICROSOFT: ${{ github.token }}
           APM_ALLOW_PROTOCOL_FALLBACK: '1'
         run: |
           $Work = Join-Path $env:RUNNER_TEMP ("hve-squad-package-" + $env:GITHUB_RUN_ID + "-" + $env:GITHUB_RUN_ATTEMPT)
@@ -159,7 +160,7 @@ jobs:
         shell: pwsh
         env:
           HVE_SQUAD_RELEASE_GITHUB_TOKEN: ${{ github.token }}
-          GITHUB_APM_PAT_PETER_N91: ${{ github.token }}
+          GITHUB_APM_PAT_MICROSOFT: ${{ github.token }}
           APM_ALLOW_PROTOCOL_FALLBACK: '1'
         run: |
           $Tool = [IO.Path]::Combine('tools', 'HveSquad.ReleaseSync')

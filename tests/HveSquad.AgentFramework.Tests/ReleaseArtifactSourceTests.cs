@@ -16,9 +16,9 @@ public class ReleaseArtifactSourceTests
     {
         var handler = new StubHandler((request, _) => request.RequestUri!.AbsolutePath switch
         {
-            "/repos/Peter-N91/hve-squad/releases/latest" =>
+            "/repos/microsoft/hve-squad/releases/latest" =>
                 Json("""{"tag_name":"v0.16.2","draft":false,"prerelease":false,"published_at":"2026-10-01T00:00:00Z"}"""),
-            "/repos/Peter-N91/hve-squad/commits/v0.16.2" =>
+            "/repos/microsoft/hve-squad/commits/v0.16.2" =>
                 Json($$"""{"sha":"{{CommitSha}}"}"""),
             _ => throw new InvalidOperationException(request.RequestUri.AbsolutePath),
         });
@@ -35,7 +35,7 @@ public class ReleaseArtifactSourceTests
 
         var resolved = await source.ResolveAsync();
 
-        Assert.Equal($"Peter-N91/hve-squad#{CommitSha}", acquiredSpec);
+        Assert.Equal($"microsoft/hve-squad#{CommitSha}", acquiredSpec);
         Assert.Equal(new SquadRelease("v0.16.2", CommitSha), resolved.Release);
         Assert.Contains("v0.16.2", resolved.Origin, StringComparison.Ordinal);
         Assert.Contains(CommitSha, resolved.Origin, StringComparison.Ordinal);
@@ -55,7 +55,7 @@ public class ReleaseArtifactSourceTests
         await source.ResolveAsync();
 
         Assert.Equal(
-            "/repos/Peter-N91/hve-squad/releases/tags/v0.16.2",
+            "/repos/microsoft/hve-squad/releases/tags/v0.16.2",
             handler.Requests[0].Path);
     }
 
@@ -277,7 +277,7 @@ public class ReleaseArtifactSourceTests
         Assert.NotEmpty(report.Contracts.Roles);
         Assert.NotEmpty(report.Contracts.Modes);
         Assert.NotEmpty(report.Contracts.Schemas);
-        Assert.Equal(511, report.Contracts.Assertions.Count);
+        Assert.Equal(518, report.Contracts.Assertions.Count);
         Assert.Contains(report.PromotionBlockers, value => value.StartsWith("unknown-contract-drift:", StringComparison.Ordinal));
         Assert.Contains(report.PromotionBlockers, value => value.StartsWith("candidate-pin-not-reviewed:", StringComparison.Ordinal));
         Assert.Contains(report.PromotionBlockers, value => value.StartsWith("mechanical-conformance-unverified:", StringComparison.Ordinal));
@@ -734,7 +734,7 @@ public class ReleaseArtifactSourceTests
         private SquadArtifactRoots Roots(SquadRelease release) => new([Host.Artifacts], null, "original synthetic installed fixture") { Release = release };
         private string Package(SquadRelease release) => "name: hve-squad\nversion: " + release.Tag[1..] +
             "\ndependencies:\n  apm:\n    - microsoft/hve-core/fixture#" + CoreReference +
-            "\n    - Peter-N91/hve-squad/fixture#" + release.Tag + "\n  mcp: []\n";
+            "\n    - microsoft/hve-squad/fixture#" + release.Tag + "\n  mcp: []\n";
         private string Behavior() => "| ID | Rule | Source |\n| --- | --- | --- |\n" +
             string.Join('\n', SupportedSquadRelease.Current.Assertions.Select(assertion => "| " + assertion.Id + " | original fixture rule | fixture |")) +
             (ExtraAssertion ? "\n| NEW-01 | original new fixture rule | fixture |\n" : "\n");
@@ -750,7 +750,7 @@ public class ReleaseArtifactSourceTests
                     return new(HttpStatusCode.Forbidden) { Content = new StringContent("{\"message\":\"fixture token must not be logged\"}") };
                 }
             }
-            if (path.StartsWith("/repos/Peter-N91/hve-squad/releases/", StringComparison.Ordinal))
+            if (path.StartsWith("/repos/microsoft/hve-squad/releases/", StringComparison.Ordinal))
             {
                 return MetadataDefect == "missing" ? new(HttpStatusCode.NotFound) : Json(JsonSerializer.Serialize(new
                 {
@@ -760,15 +760,15 @@ public class ReleaseArtifactSourceTests
                     published_at = "2026-10-07T18:03:09Z",
                 }, ReleaseContracts.Json));
             }
-            if (path.StartsWith("/repos/Peter-N91/hve-squad/commits/", StringComparison.Ordinal))
+            if (path.StartsWith("/repos/microsoft/hve-squad/commits/", StringComparison.Ordinal))
             {
                 return Json(JsonSerializer.Serialize(new { sha = MetadataDefect == "moved" ? new string('f', 40) : OfficialCommit }));
             }
-            if (path == "/repos/Peter-N91/hve-squad/contents/apm.yml")
+            if (path == "/repos/microsoft/hve-squad/contents/apm.yml")
             {
                 return Blob("apm.yml", Package(Release));
             }
-            if (path == "/repos/Peter-N91/hve-squad/contents/tests/squad-behavior-contract.md")
+            if (path == "/repos/microsoft/hve-squad/contents/tests/squad-behavior-contract.md")
             {
                 return Blob("tests/squad-behavior-contract.md", Behavior());
             }
