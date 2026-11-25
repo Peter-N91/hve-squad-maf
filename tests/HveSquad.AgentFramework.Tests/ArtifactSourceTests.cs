@@ -84,27 +84,27 @@ public class ArtifactSourceTests : IDisposable
     }
 
     [Theory]
-    [InlineData("Peter-N91/hve-squad")]                       // unpinned
+    [InlineData("microsoft/hve-squad")]                       // unpinned
     [InlineData("hve-squad#v1.0.0")]                          // no owner
     [InlineData("--upload-pack=calc#v1")]                     // argument injection
-    [InlineData("Peter-N91/hve-squad#v1 && calc")]            // command chaining
-    [InlineData("Peter-N91/hve-squad#$(whoami)")]             // substitution
-    [InlineData("Peter-N91/hve-squad#main")]                  // moving branch
-    [InlineData("Peter-N91/hve-squad#latest")]                // moving alias
-    [InlineData("Peter-N91/hve-squad#0123456789abcdef")]      // abbreviated SHA
+    [InlineData("microsoft/hve-squad#v1 && calc")]            // command chaining
+    [InlineData("microsoft/hve-squad#$(whoami)")]             // substitution
+    [InlineData("microsoft/hve-squad#main")]                  // moving branch
+    [InlineData("microsoft/hve-squad#latest")]                // moving alias
+    [InlineData("microsoft/hve-squad#0123456789abcdef")]      // abbreviated SHA
     public void ApmSource_RejectsUnsafeOrUnpinnedSpecs(string spec) =>
         Assert.Throws<ArgumentException>(() => new ApmArtifactSource(spec));
 
     [Fact]
     public void ApmSource_RejectsUnsafeTarget() =>
-        Assert.Throws<ArgumentException>(() => new ApmArtifactSource("Peter-N91/hve-squad#v1.0.0", "--exec=calc"));
+        Assert.Throws<ArgumentException>(() => new ApmArtifactSource("microsoft/hve-squad#v1.0.0", "--exec=calc"));
 
     [Fact]
     public void ApmSource_CacheDirectoryIsStableAndSpecific()
     {
-        var a = new ApmArtifactSource("Peter-N91/hve-squad#v0.12.7").CacheDirectory;
-        var b = new ApmArtifactSource("Peter-N91/hve-squad#v0.12.7").CacheDirectory;
-        var c = new ApmArtifactSource("Peter-N91/hve-squad#v0.12.8").CacheDirectory;
+        var a = new ApmArtifactSource("microsoft/hve-squad#v0.12.7").CacheDirectory;
+        var b = new ApmArtifactSource("microsoft/hve-squad#v0.12.7").CacheDirectory;
+        var c = new ApmArtifactSource("microsoft/hve-squad#v0.12.8").CacheDirectory;
 
         Assert.Equal(a, b);
         Assert.NotEqual(a, c);
@@ -114,9 +114,9 @@ public class ArtifactSourceTests : IDisposable
     public void ApmSource_CacheDirectoryIsSpecificToSourceAndTarget()
     {
         var root = Path.Combine(_temp, "cache");
-        var sourceA = new ApmArtifactSource("Peter-N91/hve-squad#v0.16.2", "copilot", root);
-        var sourceB = new ApmArtifactSource("Peter-N91/hve-squad#v0.16.3", "copilot", root);
-        var targetB = new ApmArtifactSource("Peter-N91/hve-squad#v0.16.2", "agent-skills", root);
+        var sourceA = new ApmArtifactSource("microsoft/hve-squad#v0.16.2", "copilot", root);
+        var sourceB = new ApmArtifactSource("microsoft/hve-squad#v0.16.3", "copilot", root);
+        var targetB = new ApmArtifactSource("microsoft/hve-squad#v0.16.2", "agent-skills", root);
 
         Assert.NotEqual(sourceA.CacheDirectory, sourceB.CacheDirectory);
         Assert.NotEqual(sourceA.CacheDirectory, targetB.CacheDirectory);
@@ -128,7 +128,7 @@ public class ArtifactSourceTests : IDisposable
     {
         var installs = 0;
         var source = new ApmArtifactSource(
-            "Peter-N91/hve-squad#v0.16.2",
+            "microsoft/hve-squad#v0.16.2",
             cacheDirectory: Path.Combine(_temp, "cache"),
             installer: (request, _) =>
             {
@@ -145,7 +145,7 @@ public class ArtifactSourceTests : IDisposable
         var manifest = await File.ReadAllTextAsync(source.CacheManifestPath);
 
         Assert.Equal(1, installs);
-        Assert.Contains("Peter-N91/hve-squad#v0.16.2", manifest, StringComparison.Ordinal);
+        Assert.Contains("microsoft/hve-squad#v0.16.2", manifest, StringComparison.Ordinal);
         Assert.Contains("copilot", manifest, StringComparison.Ordinal);
         Assert.False(File.Exists(
             Path.Combine(source.CacheDirectory, ".github", "agents", "untrusted.agent.md")));
@@ -155,7 +155,7 @@ public class ArtifactSourceTests : IDisposable
     public async Task ApmSource_ManifestInventoriesDeployedArtifactsOnly()
     {
         var source = new ApmArtifactSource(
-            "Peter-N91/hve-squad#v0.16.2",
+            "microsoft/hve-squad#v0.16.2",
             cacheDirectory: Path.Combine(_temp, "cache"),
             installer: (request, _) =>
             {
@@ -259,7 +259,7 @@ public class ArtifactSourceTests : IDisposable
         await File.WriteAllTextAsync(
             source.CacheManifestPath,
             """
-            {"FormatVersion":1,"PackageSpec":"Peter-N91/hve-squad#v0.16.2","Target":"copilot"}
+            {"FormatVersion":1,"PackageSpec":"microsoft/hve-squad#v0.16.2","Target":"copilot"}
             """);
 
         await source.ResolveAsync();
@@ -305,7 +305,7 @@ public class ArtifactSourceTests : IDisposable
         var unrelatedFile = Path.Combine(unrelated, "secret.txt");
         await File.WriteAllTextAsync(unrelatedFile, "do not change");
         var source = new ApmArtifactSource(
-            "Peter-N91/hve-squad#v0.16.2",
+            "microsoft/hve-squad#v0.16.2",
             cacheDirectory: Path.Combine(_temp, "cache"),
             installer: (request, _) =>
             {
@@ -342,11 +342,11 @@ public class ArtifactSourceTests : IDisposable
             CreateCompleteInstallation(request.WorkingDirectory);
         };
         var first = new ApmArtifactSource(
-            "Peter-N91/hve-squad#v0.16.2",
+            "microsoft/hve-squad#v0.16.2",
             cacheDirectory: cacheRoot,
             installer: installer);
         var second = new ApmArtifactSource(
-            "Peter-N91/hve-squad#v0.16.2",
+            "microsoft/hve-squad#v0.16.2",
             cacheDirectory: cacheRoot,
             installer: installer);
 
@@ -364,7 +364,7 @@ public class ArtifactSourceTests : IDisposable
         var attempts = 0;
         var cacheRoot = Path.Combine(_temp, "cache");
         var source = new ApmArtifactSource(
-            "Peter-N91/hve-squad#v0.16.2",
+            "microsoft/hve-squad#v0.16.2",
             cacheDirectory: cacheRoot,
             installer: async (request, cancellationToken) =>
             {
@@ -394,7 +394,7 @@ public class ArtifactSourceTests : IDisposable
     public async Task ApmSource_InstallerFailureIsExplicitAndLeavesNoCache()
     {
         var source = new ApmArtifactSource(
-            "Peter-N91/hve-squad#v0.16.2",
+            "microsoft/hve-squad#v0.16.2",
             cacheDirectory: Path.Combine(_temp, "cache"),
             installer: (_, _) => ValueTask.FromException(new InvalidOperationException("installer failed")));
 
@@ -459,7 +459,7 @@ public class ArtifactSourceTests : IDisposable
     private ApmArtifactSource CreateCountingApmSource(InstallCounter installs)
     {
         return new ApmArtifactSource(
-            "Peter-N91/hve-squad#v0.16.2",
+            "microsoft/hve-squad#v0.16.2",
             cacheDirectory: Path.Combine(_temp, "cache"),
             installer: (request, _) =>
             {

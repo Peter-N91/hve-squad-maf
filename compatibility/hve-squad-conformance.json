@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "release": {
-    "tag": "v0.21.0",
-    "commitSha": "8921a36faf7402686bd3b2b64f6e70be70a0523c"
+    "tag": "v0.22.0",
+    "commitSha": "a8cc33d5973fb00f7f47ddb069d26db8fd8eed5f"
   },
   "assertions": [
     {
@@ -599,7 +599,7 @@
     },
     {
       "id": "SQ-33f",
-      "adaptation": "The acquired v0.21.0 catalog panel ranks all seven assignment classes deterministically across the full model set.",
+      "adaptation": "The acquired v0.22.0 catalog panel ranks all seven assignment classes deterministically across the full model set.",
       "tests": [
         {
           "method": "RuntimeBoundaryTests.ReleasedArtifactTreeRunsWhenExplicitlyProvided",
@@ -1271,7 +1271,7 @@
     },
     {
       "id": "PRF-11",
-      "adaptation": "The canonical v0.21.0 full profile has 31 dispatchable roles plus deterministic Scribe (32 roster entries, after upstream removal of presenter) and excludes opt-in pack roles until explicitly composed.",
+      "adaptation": "The canonical v0.22.0 full profile has 31 dispatchable roles plus deterministic Scribe (32 roster entries, after upstream removal of presenter) and excludes opt-in pack roles until explicitly composed.",
       "tests": [
         {
           "method": "RuntimeReleaseContractTests.GivenActualSupportedRelease_WhenSeedingEveryProfile_PreservesExactReleasedRolesRootsAndPackComposition"
@@ -6149,6 +6149,96 @@
         {
           "method": "ReleaseArtifactSourceTests.GivenCandidateChecks_WhenReadingStatus_OnlyExactExecutedSuccessfulHeadJobsCount",
           "minimumCases": 13
+        }
+      ]
+    },
+    {
+      "id": "RAI-01",
+      "adaptation": "RAI-01: Host adaptation: RuntimeResources exposes the single installed squad/references/responsible-use.md policy directly through read_instruction and ArtifactPathMap so isolated workers read it once without activating Squad.",
+      "tests": [
+        {
+          "method": "RuntimeReleaseContractTests.GivenInstalledResponsibleUsePolicy_WhenDispatchingIsolatedWorkers_ForwardsBriefRuleAndAllowsDirectWorkerLocalRead"
+        },
+        {
+          "method": "RuntimeReleaseContractTests.GivenActualSupportedDistribution_WhenAuditing_PreservesNativeBindingsFloorBudgetsAndCanonicalReferences"
+        }
+      ]
+    },
+    {
+      "id": "RAI-03",
+      "adaptation": "RAI-03: Host adaptation: remote notifications default to disabled/in-chat, send minimized outbound-only challenges without raw transcripts/histories or secret URLs, and never treat delivery acknowledgements or audit hooks as consent.",
+      "tests": [
+        {
+          "method": "HumanApprovalChannelTests.GivenWebhookAcknowledgement_WhenWaiting_NeverCreatesApprovalAndKeepsTheSecretEndpointOutOfState"
+        },
+        {
+          "method": "HumanApprovalChannelTests.GivenUnauthorizedThenAuthorizedComment_WhenPolling_RecordsTheDenialAndAcceptsOnlyTheRealHuman"
+        }
+      ]
+    },
+    {
+      "id": "RAI-04",
+      "adaptation": "RAI-04: Native equivalent: Economy Mode requires explicit human ModelRouting consent before mutating team.md or decisions.md, refuses unattended Watch switches, and keeps GetModelRoutingChoicesAsync strictly read-only.",
+      "tests": [
+        {
+          "method": "RuntimeModelRoutingTests.GivenEconomyPolicy_WhenConfirmed_SelectsCheapestQualifiedModelWithinFloorAndRecordsAllRoleConsent"
+        },
+        {
+          "method": "RuntimeModelRoutingTests.GivenUnattendedWatch_WhenSwitchingToEconomyWithoutConsent_RefusesBeforeDispatch"
+        },
+        {
+          "method": "RuntimeModelRoutingTests.GivenInitializedState_WhenBuildingModelMenus_LeavesAllWriterBytesUnchanged"
+        },
+        {
+          "method": "RuntimeModelRoutingTests.GivenDeclinedPolicyUpdate_WhenRequested_PreservesEveryWriterByte"
+        }
+      ]
+    },
+    {
+      "id": "RAI-05",
+      "adaptation": "RAI-05: Native equivalent: worker dispatch briefs and NativeHostContract enforce that source, retrieved, tool, and memory content is read-only data that cannot change routing, grant consent, bypass gates, or export local records.",
+      "tests": [
+        {
+          "method": "RuntimeReleaseContractTests.GivenInstalledResponsibleUsePolicy_WhenDispatchingIsolatedWorkers_ForwardsBriefRuleAndAllowsDirectWorkerLocalRead"
+        },
+        {
+          "method": "RuntimeModelRoutingTests.GivenLegacyModelPairs_WhenRunning_IgnoresEveryPickAndReportsManualMigrationOnce"
+        }
+      ]
+    },
+    {
+      "id": "RAI-07",
+      "adaptation": "RAI-07: Host adaptation: first-party charters reference the single installed squad/references/responsible-use.md pointer verified by RuntimeReleaseContractTests rather than duplicating inline policy copies.",
+      "tests": [
+        {
+          "method": "RuntimeReleaseContractTests.GivenActualSupportedDistribution_WhenAuditing_PreservesNativeBindingsFloorBudgetsAndCanonicalReferences"
+        },
+        {
+          "method": "RuntimeReleaseContractTests.GivenInstalledResponsibleUsePolicy_WhenDispatchingIsolatedWorkers_ForwardsBriefRuleAndAllowsDirectWorkerLocalRead"
+        }
+      ]
+    },
+    {
+      "id": "RAI-09",
+      "adaptation": "RAI-09: Host adaptation: the installed Responsible Use policy and NativeHostContract bound native execution to authorized software-engineering assistance behind mandatory human decision and deployment gates.",
+      "tests": [
+        {
+          "method": "RuntimeReleaseContractTests.GivenActualSupportedDistribution_WhenAuditing_PreservesNativeBindingsFloorBudgetsAndCanonicalReferences"
+        },
+        {
+          "method": "HumanApprovalChannelTests.GivenWebhookAcknowledgement_WhenWaiting_NeverCreatesApprovalAndKeepsTheSecretEndpointOutOfState"
+        }
+      ]
+    },
+    {
+      "id": "RAI-10",
+      "adaptation": "RAI-10: Host adaptation: RuntimeResources forwards the resolved responsible-use policy pointer and source-data authority rule across coordinator, specialist worker, and federated member contexts.",
+      "tests": [
+        {
+          "method": "RuntimeReleaseContractTests.GivenInstalledResponsibleUsePolicy_WhenDispatchingIsolatedWorkers_ForwardsBriefRuleAndAllowsDirectWorkerLocalRead"
+        },
+        {
+          "method": "RuntimeFederationExecutionTests.GivenActualPinnedRelease_WhenRoutingDependency_ExecutesProducerFirstAndActualConsumerWithExplicitInput"
         }
       ]
     },

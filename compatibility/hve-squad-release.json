@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "repository": "Peter-N91/hve-squad",
-  "tag": "v0.21.0",
-  "commitSha": "8921a36faf7402686bd3b2b64f6e70be70a0523c",
+  "repository": "microsoft/hve-squad",
+  "tag": "v0.22.0",
+  "commitSha": "a8cc33d5973fb00f7f47ddb069d26db8fd8eed5f",
   "hveCoreRepository": "microsoft/hve-core",
-  "hveCoreCommitSha": "4e84aee97eb0019afcb19bceb63347e096803ed5",
+  "hveCoreCommitSha": "a81603f3fc7f93083910d8b5cb7f4095407ab786",
   "behaviorContractPath": "tests/squad-behavior-contract.md",
   "conformanceStatus": "verified",
   "artifactContract": "single-plan",
@@ -817,6 +817,27 @@
         "CI-07",
         "CI-08",
         "CI-09"
+      ]
+    },
+    {
+      "family": "RAI",
+      "disposition": "host-adaptation",
+      "adaptation": "Installed Responsible Use policy is exposed once across single-squad and federated worker contexts without activating Squad solely to read it, while native host contracts, minimized in-chat-default notifications, and gated Economy Mode consent enforce source-data non-authority.",
+      "verificationOwner": "HveSquad.AgentFramework.Tests",
+      "implementationTasks": [
+        "P01-T02",
+        "P03-T02",
+        "P05-T02",
+        "P06-T01"
+      ],
+      "assertionIds": [
+        "RAI-01",
+        "RAI-03",
+        "RAI-04",
+        "RAI-05",
+        "RAI-07",
+        "RAI-09",
+        "RAI-10"
       ]
     },
     {

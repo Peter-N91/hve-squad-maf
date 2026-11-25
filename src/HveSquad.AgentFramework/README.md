@@ -10,10 +10,10 @@ package version is not yet published to NuGet.org by this work. Use a reviewed
 local package feed. The package targets .NET 10 and uses Microsoft Agent
 Framework 1.28.0 and Microsoft.Extensions.AI 10.11.0.
 
-The supported official methodology is HVE Squad **v0.21.0** at
-`8921a36faf7402686bd3b2b64f6e70be70a0523c`, with HVE Core dependency
-`4e84aee97eb0019afcb19bceb63347e096803ed5`.
-`SupportedSquadRelease.Current` reads the embedded exact identity and all 279
+The supported official methodology is HVE Squad **v0.22.0** at
+`a8cc33d5973fb00f7f47ddb069d26db8fd8eed5f`, with HVE Core dependency
+`a81603f3fc7f93083910d8b5cb7f4095407ab786`.
+`SupportedSquadRelease.Current` reads the embedded exact identity and all 518
 assertion rows. The inventory is not a claim of live-model quality or product
 deployment readiness.
 

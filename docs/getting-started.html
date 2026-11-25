@@ -34,9 +34,9 @@ git --version
 apm --version
 dotnet build HveSquad.AgentFramework.slnx
 
-dotnet run --project samples\HveSquad.AgentFramework.Sample -- --release v0.21.0
+dotnet run --project samples\HveSquad.AgentFramework.Sample -- --release v0.22.0
 dotnet run --project samples\HveSquad.AgentFramework.Sample -- --latest</code></pre></div>
-<p>Expect the release tag, commit, artifact counts, available profiles and packs, and a staged workflow description. For <code>v0.21.0</code>, the exercised commit is <code>8921a36faf7402686bd3b2b64f6e70be70a0523c</code>. Warnings about opt-in external delegates do not imply those capabilities are installed.</p>
+<p>Expect the release tag, commit, artifact counts, available profiles and packs, and a staged workflow description. For <code>v0.22.0</code>, the exercised commit is <code>a8cc33d5973fb00f7f47ddb069d26db8fd8eed5f</code>. Warnings about opt-in external delegates do not imply those capabilities are installed.</p>
 <p>With no arguments, the inspector searches upward for installed project artifacts. Positional directory arguments inspect explicit artifact roots. Neither path is the live runtime's default release acquisition.</p></section>
 <section id="sample"><h2>02. Run the existing console sample</h2><p>Provision <code>OPENAI_API_KEY</code> and <code>OPENAI_MODEL</code> in the process environment through your secret manager or secure local configuration. Do not put credentials in source, command history, or run JSON. The sample requires both variables.</p><p><code>OPENAI_ENDPOINT</code> is optional and must be an absolute HTTP or HTTPS URI. Use HTTPS for remote providers; plain HTTP is only appropriate for an explicitly trusted local endpoint. OpenAI-compatible providers, including a correctly configured Azure OpenAI v1 endpoint, must support the selected model and tool calls.</p>
 <div class="code-block"><div class="code-heading">PowerShell · Fictional text inputs and a live research request</div><pre><code>Set-Location C:\Solutions\hve-squad-maf
@@ -49,7 +49,7 @@ Set-Content -LiteralPath C:\app-data\bid-cases\demo\inputs\approved-capabilities
 dotnet run --project samples\HveSquad.AgentFramework.Sample -- `
   --run "Research the question in inputs\rfp.txt using inputs\approved-capabilities.txt. Cite source identifiers and report gaps. Stop after research; do not change inputs or send anything externally." `
   --project C:\app-data\bid-cases\demo `
-  --version v0.21.0 `
+  --version v0.22.0 `
   --profile full</code></pre></div>
 <p>These fixture files contain no real customer or product data. Use a fresh demo directory; the commands replace the two named files. Review the complete initialization and routing proposals, including the research-only scope. Only enter <code>yes</code> when you approve the proposal actually shown. Answer any questions, or stop with Ctrl+C. A focused research run writes research evidence, not a completed proposal response.</p>
 <div class="callout"><p><strong>What the sample can actually do:</strong> read contained case files and write scoped methodology artifacts. It also registers a contained <code>write_project_file</code> tool for the <code>developer</code> role after explicit approval; that optional source-writing demonstration is not needed for this request or the application's business proposition. It has no shell, build, test, web-search, or deployment executor. The library binding below registers no host tools.</p></div>
@@ -57,7 +57,7 @@ dotnet run --project samples\HveSquad.AgentFramework.Sample -- `
 <div class="code-block"><div class="code-heading">JSON · run.json</div><pre><code>{
   "request": "Research the question in inputs\\rfp.txt using inputs\\approved-capabilities.txt. Cite source identifiers and report gaps. Stop after research; do not change inputs or send anything externally.",
   "project": "C:\\app-data\\bid-cases\\demo",
-  "version": "v0.21.0",
+  "version": "v0.22.0",
   "profile": "full"
 }</code></pre></div>
 <div class="code-block"><div class="code-heading">PowerShell · Run configuration</div><pre><code>dotnet run --project samples\HveSquad.AgentFramework.Sample -- --config run.json</code></pre></div>
@@ -93,7 +93,7 @@ internal static class SquadEntry
         {
             ProjectPath = caseDirectory,
             Profile = "full",
-            Version = "v0.21.0",
+            Version = "v0.22.0",
             InputPaths = [@"inputs\rfp.txt", @"inputs\approved-capabilities.txt"],
             Tools = [],
             ApprovalChannel = "in-chat",
@@ -174,7 +174,7 @@ dotnet restore C:\projects\SquadPackageHost\SquadPackageHost.csproj `
 <p>Add the same <code>SquadEntry.cs</code> and <code>Program.cs</code> from above, then run <code>dotnet run --project C:\projects\SquadPackageHost --no-restore</code>. For ongoing use, add the local feed to the consumer's <code>NuGet.Config</code>; preserve any organization package-source mapping policy. The generated package is <code>artifacts\HveSquad.AgentFramework.0.2.0.nupkg</code>, not a published download.</p>
 <h3 id="package-verification">Verify a real isolated package consumer</h3><p>The maintained package-only example restores the actual local package outside this checkout, with package-source mapping and a separate restore folder. It rejects source-project references and compares the loaded DLL bytes to the package. The scripted native check covers original durable resume, actual federation-member execution, local Markdown/HTML/PDF/Word, consumer memory and human-only discovery without resolving a chat client for helpers.</p>
 <div class="code-block"><div class="code-heading">PowerShell · Pack and execute without source references</div><pre><code>pwsh -NoProfile -File .\scripts\Test-PackageConsumer.ps1</code></pre></div>
-<p>Requires .NET 10, PowerShell 7.4+, Git/APM and access to NuGet/public release acquisition, but no model credential or remote write permission. A complete cache is reusable; acquisition errors remain explicit. The script leaves a newly named temporary consumer, package and verification JSON for inspection, never an existing case. The package includes its README, MIT license and exact supported manifest, not upstream charters, customer state or credentials. This mechanical check is not complete 511-assertion or Linux/IndustryIQ acceptance.</p>
+<p>Requires .NET 10, PowerShell 7.4+, Git/APM and access to NuGet/public release acquisition, but no model credential or remote write permission. A complete cache is reusable; acquisition errors remain explicit. The script leaves a newly named temporary consumer, package and verification JSON for inspection, never an existing case. The package includes its README, MIT license and exact supported manifest, not upstream charters, customer state or credentials. This mechanical check is not complete 518-assertion or Linux/IndustryIQ acceptance.</p>
 <h3>After publication only</h3><p><strong>The following public-feed installation is NOT available until a maintainer publishes this version.</strong> It shows the intended consumer command, not a working public installation today.</p>
 <div class="code-block"><div class="code-heading">PowerShell · After maintainer publication, inside your app project</div><pre><code>dotnet add package HveSquad.AgentFramework --version 0.2.0</code></pre></div></section>
 <section id="di"><h2>Use dependency injection in an existing host</h2><p><code>AddHveSquad</code> returns the service collection and registers a transient <code>SquadRuntimeFactory</code>. It is an async factory pattern, not a synchronously constructed runtime. Acquisition happens in <code>CreateAsync</code>.</p>
@@ -182,7 +182,7 @@ dotnet restore C:\projects\SquadPackageHost\SquadPackageHost.csproj `
   "HveSquad": {
     "ProjectPath": "C:\\app-data\\bid-cases\\demo",
     "Profile": "full",
-    "Version": "v0.21.0",
+    "Version": "v0.22.0",
     "Mode": "interactive",
     "Packs": [],
     "InputPaths": ["inputs\\rfp.txt", "inputs\\approved-capabilities.txt"],

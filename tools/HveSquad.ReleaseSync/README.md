@@ -84,7 +84,7 @@ not that these blockers passed.
    step must succeed on both Windows and Linux; green base/merge-head runs, empty reports, skips,
    absent methods/data cases and mismatched commits do not count.
 5. Compare the actual observations against the prior last-good
-   [fixture baseline](../../compatibility/observations/v0.21.0.json).
+   [fixture baseline](../../compatibility/observations/v0.22.0.json).
    They are reduced from verified native dispatch/history/gate receipts and actual files, not run prose.
    Deliverables compare normalized root plus extension, never topic filenames. Native bookkeeping,
    memory/learning operations and coordinator/provider calls are not fictitious role dispatches.

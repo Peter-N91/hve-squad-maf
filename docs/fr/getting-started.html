@@ -34,9 +34,9 @@ git --version
 apm --version
 dotnet build HveSquad.AgentFramework.slnx
 
-dotnet run --project samples\HveSquad.AgentFramework.Sample -- --release v0.21.0
+dotnet run --project samples\HveSquad.AgentFramework.Sample -- --release v0.22.0
 dotnet run --project samples\HveSquad.AgentFramework.Sample -- --latest</code></pre></div>
-<p>Vous devez obtenir le tag de version, le commit, le nombre d’artefacts, les profils et packs disponibles, ainsi qu’une description du workflow par étapes. Pour <code>v0.21.0</code>, le commit testé est <code>8921a36faf7402686bd3b2b64f6e70be70a0523c</code>. Les avertissements concernant les délégués externes à activer explicitement ne signifient pas que ces capacités sont installées.</p>
+<p>Vous devez obtenir le tag de version, le commit, le nombre d’artefacts, les profils et packs disponibles, ainsi qu’une description du workflow par étapes. Pour <code>v0.22.0</code>, le commit testé est <code>a8cc33d5973fb00f7f47ddb069d26db8fd8eed5f</code>. Les avertissements concernant les délégués externes à activer explicitement ne signifient pas que ces capacités sont installées.</p>
 <p>Sans argument, l’inspecteur remonte l’arborescence à la recherche d’artefacts de projet installés. Les arguments positionnels de répertoire permettent d’inspecter des racines d’artefacts explicites. Aucune de ces deux méthodes ne correspond à l’acquisition de version par défaut du runtime en exécution réelle.</p></section>
 <section id="sample"><h2>02. Exécuter l’exemple console existant</h2><p>Définissez <code>OPENAI_API_KEY</code> et <code>OPENAI_MODEL</code> dans l’environnement du processus à l’aide de votre gestionnaire de secrets ou d’une configuration locale sécurisée. Ne placez pas d’identifiants d’authentification dans les sources, l’historique des commandes ou le JSON d’exécution. L’exemple exige les deux variables.</p><p><code>OPENAI_ENDPOINT</code> est facultatif et doit être un URI HTTP ou HTTPS absolu. Utilisez HTTPS pour les fournisseurs distants ; HTTP en clair ne convient qu’à un point de terminaison local explicitement approuvé. Les fournisseurs compatibles OpenAI, y compris un point de terminaison Azure OpenAI v1 correctement configuré, doivent prendre en charge le modèle sélectionné et les appels d’outils.</p>
 <div class="code-block"><div class="code-heading">PowerShell · Entrées textuelles fictives et demande de recherche en exécution réelle</div><pre><code>Set-Location C:\Solutions\hve-squad-maf
@@ -49,7 +49,7 @@ Set-Content -LiteralPath C:\app-data\bid-cases\demo\inputs\approved-capabilities
 dotnet run --project samples\HveSquad.AgentFramework.Sample -- `
   --run "Research the question in inputs\rfp.txt using inputs\approved-capabilities.txt. Cite source identifiers and report gaps. Stop after research; do not change inputs or send anything externally." `
   --project C:\app-data\bid-cases\demo `
-  --version v0.21.0 `
+  --version v0.22.0 `
   --profile full</code></pre></div>
 <p>Ces fichiers de test ne contiennent aucune donnée réelle de client ou de produit. Utilisez un nouveau répertoire de démonstration ; les commandes remplacent les deux fichiers nommés. Examinez les propositions complètes d’initialisation et de routage, y compris le périmètre limité à la recherche. Ne saisissez <code>yes</code> que si vous approuvez la proposition effectivement affichée. Répondez aux éventuelles questions ou arrêtez avec Ctrl+C. Une exécution ciblée sur la recherche écrit des éléments probants de recherche, et non une réponse finalisée à l’appel d’offres.</p>
 <div class="callout"><p><strong>Ce que l’exemple peut réellement faire :</strong> lire les fichiers contenus dans le répertoire du dossier et écrire des artefacts méthodologiques au périmètre délimité. Il enregistre également un outil <code>write_project_file</code> limité à ce répertoire pour le rôle <code>developer</code>, après approbation explicite ; cette démonstration facultative d’écriture de code source n’est nécessaire ni pour cette demande ni pour la finalité métier de l’application. Il ne dispose d’aucun exécuteur de shell, de compilation, de tests, de recherche web ou de déploiement. Le raccordement à la bibliothèque ci-dessous n’enregistre aucun outil de l’hôte.</p></div>
@@ -57,7 +57,7 @@ dotnet run --project samples\HveSquad.AgentFramework.Sample -- `
 <div class="code-block"><div class="code-heading">JSON · run.json</div><pre><code>{
   "request": "Research the question in inputs\\rfp.txt using inputs\\approved-capabilities.txt. Cite source identifiers and report gaps. Stop after research; do not change inputs or send anything externally.",
   "project": "C:\\app-data\\bid-cases\\demo",
-  "version": "v0.21.0",
+  "version": "v0.22.0",
   "profile": "full"
 }</code></pre></div>
 <div class="code-block"><div class="code-heading">PowerShell · Exécuter la configuration</div><pre><code>dotnet run --project samples\HveSquad.AgentFramework.Sample -- --config run.json</code></pre></div>
@@ -93,7 +93,7 @@ internal static class SquadEntry
         {
             ProjectPath = caseDirectory,
             Profile = "full",
-            Version = "v0.21.0",
+            Version = "v0.22.0",
             InputPaths = [@"inputs\rfp.txt", @"inputs\approved-capabilities.txt"],
             Tools = [],
             ApprovalChannel = "in-chat",
@@ -174,7 +174,7 @@ dotnet restore C:\projects\SquadPackageHost\SquadPackageHost.csproj `
 <p>Ajoutez les mêmes fichiers <code>SquadEntry.cs</code> et <code>Program.cs</code> que ci-dessus, puis exécutez <code>dotnet run --project C:\projects\SquadPackageHost --no-restore</code>. Pour une utilisation régulière, ajoutez le flux local au <code>NuGet.Config</code> de l’application consommatrice ; conservez toute politique de mappage des sources de packages de votre organisation. Le package généré est <code>artifacts\HveSquad.AgentFramework.0.2.0.nupkg</code>, et non un téléchargement publié.</p>
 <h3 id="package-verification">Vérifier un véritable consommateur de package isolé</h3><p>L’exemple maintenu restaure le vrai package local hors de ce checkout, avec correspondance des sources et dossier de restauration séparé. Il refuse les références aux projets sources et compare les octets de DLL chargée au package. Le test natif scripté couvre reprise durable originale, véritable exécution d’un membre fédéré, Markdown/HTML/PDF/Word locaux, mémoire du consommateur et découverte humaine, sans résoudre de client de modèle pour les helpers.</p>
 <div class="code-block"><div class="code-heading">PowerShell · Empaqueter et exécuter sans référence source</div><pre><code>pwsh -NoProfile -File .\scripts\Test-PackageConsumer.ps1</code></pre></div>
-<p>Requiert .NET 10, PowerShell 7.4+, Git/APM et accès à NuGet/acquisition publique, mais aucun secret de modèle ou droit d’écriture distant. Un cache complet est réutilisable ; les erreurs d’acquisition restent explicites. Le script laisse un nouveau consommateur temporaire, package et JSON de vérification pour inspection, jamais un dossier existant. Le package inclut README, licence MIT et manifeste exact, pas les chartes amont, l’état client ou les secrets. Ce contrôle mécanique ne prouve pas toute la conformité des 511 assertions ni la validation Linux/IndustryIQ.</p>
+<p>Requiert .NET 10, PowerShell 7.4+, Git/APM et accès à NuGet/acquisition publique, mais aucun secret de modèle ou droit d’écriture distant. Un cache complet est réutilisable ; les erreurs d’acquisition restent explicites. Le script laisse un nouveau consommateur temporaire, package et JSON de vérification pour inspection, jamais un dossier existant. Le package inclut README, licence MIT et manifeste exact, pas les chartes amont, l’état client ou les secrets. Ce contrôle mécanique ne prouve pas toute la conformité des 518 assertions ni la validation Linux/IndustryIQ.</p>
 <h3>Uniquement après publication</h3><p><strong>L’installation depuis un flux public ci-dessous n’est PAS disponible tant qu’un mainteneur n’a pas publié cette version.</strong> Elle montre la commande prévue pour les consommateurs du package, et non une installation publique fonctionnelle à ce jour.</p>
 <div class="code-block"><div class="code-heading">PowerShell · Après publication par un mainteneur, dans votre projet d’application</div><pre><code>dotnet add package HveSquad.AgentFramework --version 0.2.0</code></pre></div></section>
 <section id="di"><h2>Utiliser l’injection de dépendances dans un hôte existant</h2><p><code>AddHveSquad</code> renvoie la collection de services et enregistre une <code>SquadRuntimeFactory</code> avec une durée de vie transitoire. Il s’agit d’un modèle de fabrique asynchrone, et non d’un runtime construit de manière synchrone. L’acquisition a lieu dans <code>CreateAsync</code>.</p>
@@ -182,7 +182,7 @@ dotnet restore C:\projects\SquadPackageHost\SquadPackageHost.csproj `
   "HveSquad": {
     "ProjectPath": "C:\\app-data\\bid-cases\\demo",
     "Profile": "full",
-    "Version": "v0.21.0",
+    "Version": "v0.22.0",
     "Mode": "interactive",
     "Packs": [],
     "InputPaths": ["inputs\\rfp.txt", "inputs\\approved-capabilities.txt"],
