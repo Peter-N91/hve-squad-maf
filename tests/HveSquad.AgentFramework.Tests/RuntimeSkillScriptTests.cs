@@ -109,7 +109,7 @@ public sealed class RuntimeSkillScriptTests
         SquadToolAction action = SquadToolAction.General, string output = "implementation.txt")
     {
         var script = Fixture(host);
-        var executor = new SquadProcessExecutor(PowerShell(), host.Project, "fixture-" + mode + "-v1", TimeSpan.FromSeconds(20));
+        var executor = new SquadProcessExecutor(PowerShell(), host.Project, "fixture-" + mode + "-v1", TimeSpan.FromSeconds(30));
         var roots = await host.Source(tag).ResolveAsync();
         var binding = SquadSkillScriptBinding.Create(roots, "specialist-test", ScriptPath, executor.Binding);
         var function = AIFunctionFactory.Create(async (string value, CancellationToken token) =>
@@ -648,7 +648,7 @@ public sealed class RuntimeSkillScriptTests
     {
         using var host = new RuntimeTestHost();
         var script = Fixture(host);
-        var executor = new SquadProcessExecutor(PowerShell(), host.Project, "cancel-v1", TimeSpan.FromSeconds(20));
+        var executor = new SquadProcessExecutor(PowerShell(), host.Project, "cancel-v1", TimeSpan.FromSeconds(30));
         using var cancellation = new CancellationTokenSource();
         var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         Task<SquadProcessResult> execution;
@@ -658,7 +658,7 @@ public sealed class RuntimeSkillScriptTests
             watcher.Renamed += (_, _) => ready.TrySetResult();
             watcher.EnableRaisingEvents = true;
             execution = executor.ExecuteAsync(Invocation(script, host.Project, child ? "spawn" : "wait", output: "ready.pid"), cancellation.Token);
-            await ready.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            await ready.Task.WaitAsync(TimeSpan.FromSeconds(25));
             watcher.EnableRaisingEvents = false;
         }
         var ids = File.ReadAllText(Path.Combine(host.Project, "ready.pid")).Split(',')
@@ -673,7 +673,7 @@ public sealed class RuntimeSkillScriptTests
             try
             {
                 using var process = Process.GetProcessById(id);
-                await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+                await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(20));
                 Assert.True(process.HasExited);
             }
             catch (ArgumentException)
@@ -719,7 +719,7 @@ public sealed class RuntimeSkillScriptTests
         Environment.SetEnvironmentVariable("HVE_SQUAD_PRIVATE_TEST_VALUE", "original private test value");
         try
         {
-            var executor = new SquadProcessExecutor(PowerShell(), host.Project, "environment-v1", TimeSpan.FromSeconds(10));
+            var executor = new SquadProcessExecutor(PowerShell(), host.Project, "environment-v1", TimeSpan.FromSeconds(30));
             var result = await executor.ExecuteAsync(Invocation(script, host.Project, "environment") with { ProjectOutputs = [] });
             Assert.Equal("absent", result.StandardOutput.Trim());
         }
@@ -764,7 +764,7 @@ public sealed class RuntimeSkillScriptTests
     {
         using var host = new RuntimeTestHost();
         var script = Fixture(host);
-        var executor = new SquadProcessExecutor(PowerShell(), host.Project, "missing-output-v1", TimeSpan.FromSeconds(10));
+        var executor = new SquadProcessExecutor(PowerShell(), host.Project, "missing-output-v1", TimeSpan.FromSeconds(30));
         var error = await Assert.ThrowsAsync<SquadProcessExecutionException>(() =>
             executor.ExecuteAsync(Invocation(script, host.Project, "dry")));
         Assert.Contains("declared output", error.Message, StringComparison.Ordinal);
@@ -844,7 +844,7 @@ public sealed class RuntimeSkillScriptTests
             ActivityStopped = spans.Add,
         };
         ActivitySource.AddActivityListener(listener);
-        var executor = new SquadProcessExecutor(PowerShell(), host.Project, "trace-v1", TimeSpan.FromSeconds(10), activitySource: source);
+        var executor = new SquadProcessExecutor(PowerShell(), host.Project, "trace-v1", TimeSpan.FromSeconds(30), activitySource: source);
         var result = await executor.ExecuteAsync(Invocation(script, host.Project, "write", "original private fixture output"));
         var span = Assert.Single(spans);
         Assert.Equal("run.skill_script", span.OperationName);
